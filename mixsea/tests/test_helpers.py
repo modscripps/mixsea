@@ -4,6 +4,9 @@ from scipy import signal
 
 from mixsea import helpers
 
+# fix for bug in numpy 1.18 random generator
+np.random.bit_generator = np.random._bit_generator
+
 
 def test_psd_output_dims():
     """Make sure output dimensions of psd work as expected."""
