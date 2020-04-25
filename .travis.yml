@@ -9,7 +9,7 @@ install:
 # command to run tests
 script:
   - pytest
-  - black --check ctdproc/
+  - black --check mixsea/
 
 # safelist
 #branches:
