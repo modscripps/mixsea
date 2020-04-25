@@ -14,7 +14,14 @@ To install mixsea, run this command in your terminal:
 
     $ pip install mixsea
 
-This is the preferred method to install mixsea, as it will always install the most recent stable release.
+This is the preferred method to install mixsea, as it will always install the
+most recent stable release.
+
+.. note::
+
+  This package is still under construction and has not been released on
+  `pypi.org <https://pypi.org/>`_ yet. It currently needs to be installed from
+  sources, see below.
 
 
 From sources
