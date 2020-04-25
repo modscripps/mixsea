@@ -1,0 +1,3 @@
+numpy
+gsw
+scipy

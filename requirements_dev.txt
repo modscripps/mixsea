@@ -1,0 +1,15 @@
+bump2version
+wheel
+watchdog
+flake8
+tox
+twine
+pytest
+pytest-runner
+pytest-datadir
+sphinx
+sphinx_rtd_theme
+argh
+black
+isort
+pre-commit

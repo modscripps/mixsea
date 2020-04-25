@@ -1,0 +1,9 @@
+name: mixsea
+dependencies:
+  - python=3.8
+  - numpy
+  - scipy
+  - gsw
+  - pip
+  - pip:
+    - -r file:requirements_dev.txt

@@ -1,0 +1,6 @@
+.DS_Store
+mixsea.egg-info/
+docs/_build/
+.tox
+.vscode
+scratch/
