@@ -20,6 +20,6 @@ sphinx:
 python:
   version: 3.6
   install:
-    - requirements: requirements.txt
+    - requirements: requirements_rtfd.txt
     - method: pip
       path: .

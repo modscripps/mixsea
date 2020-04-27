@@ -6,7 +6,7 @@ mixsea
 .. image:: https://img.shields.io/pypi/v/mixsea.svg
         :target: https://pypi.python.org/pypi/mixsea
 
-.. image:: https://img.shields.io/travis/modscripps/mixsea.svg
+.. image:: https://travis-ci.com/modscripps/mixsea.svg?branch=master
         :target: https://travis-ci.com/modscripps/mixsea
 
 .. image:: https://readthedocs.org/projects/mixsea/badge/?version=latest
