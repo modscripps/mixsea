@@ -1,3 +1,5 @@
+import pathlib
+
 import numpy as np
 from scipy import fftpack, signal
 from scipy.interpolate import interp1d
@@ -224,3 +226,17 @@ def read_testfile(filename):
         vars = f.readline().strip()
         v = [x.strip() for x in vars[2:].split(",")]
     return {vi: data[:, i] for i, vi in enumerate(v)}
+
+
+def read_ctd_testfile():
+    p = pathlib.Path(__file__).resolve()
+    ctdfile = p.parent / "tests" / "data" / "ctd_test_data.csv"
+    ctd = read_testfile(ctdfile)
+    return ctd
+
+
+def read_ladcp_testfile():
+    p = pathlib.Path(__file__).resolve()
+    ladcpfile = p.parent / "tests" / "data" / "ladcp_test_data.csv"
+    ladcp = read_testfile(ladcpfile)
+    return ladcp

@@ -6,10 +6,12 @@
 
    installation
    usage
+   tutorial
    source/modules
    contributing
    authors
    history
+   zzreferences
 
 Indices and tables
 ==================

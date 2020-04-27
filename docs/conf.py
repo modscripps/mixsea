@@ -38,6 +38,9 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.extlinks",
+    "IPython.sphinxext.ipython_directive",
+    "IPython.sphinxext.ipython_console_highlighting",
+    "sphinxcontrib.bibtex",
 ]
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
@@ -48,6 +51,10 @@ extlinks = {
     "issue": ("https://github.com/gunnarvoet/ctdproc/issues/%s", "GH"),
     "pull": ("https://github.com/gunnarvoet/ctdproc/pull/%s", "PR"),
 }
+
+ipython_savefig_dir = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "_build", "html", "_static"
+)
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
