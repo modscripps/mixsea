@@ -240,30 +240,28 @@ Some other important things to know about the docs:
   for a detailed explanation, or look at some of the existing functions to
   extend it in a similar manner.
 
-.. 
-  - The tutorials make heavy use of the `ipython directive
+- The tutorials make heavy use of the `ipython directive
   <http://matplotlib.org/sampledoc/ipython_directive.html>`_ sphinx extension.
   This directive lets you put code in the documentation which will be run
   during the doc build. For example::
 
-..      .. ipython:: python
+      .. ipython:: python
 
-..          x = 2
-..          x**3
+          x = 2
+          x**3
 
-..  will be rendered as::
+  will be rendered as::
 
-..      In [1]: x = 2
+      In [1]: x = 2
 
-..      In [2]: x**3
-..      Out[2]: 8
+      In [2]: x**3
+      Out[2]: 8
 
-..  Almost all code examples in the docs are run (and the output saved) during the
+  Almost all code examples in the docs are run (and the output saved) during the
   doc build. This approach means that code examples will always be up to date,
-  but it does make the doc building a bit more complex.
+  but it does make the doc building a bit more complex
 
-.. 
-  - Our API documentation in ``doc/api.rst`` houses the auto-generated
+..  - Our API documentation in ``doc/api.rst`` houses the auto-generated
   documentation from the docstrings. For classes, there are a few subtleties
   around controlling which methods and attributes have pages auto-generated.
 
