@@ -26,6 +26,7 @@ setup(
     },
     # Packaging
     packages=find_packages(include=["mixsea", "mixsea.*"], exclude=["*.tests"]),
+    package_data={"mixsea": ["tests/data/*.csv"]},
     include_package_data=True,
     zip_safe=False,
     platforms=["any"],  # or more specific, e.g. "win32", "cygwin", "osx"
