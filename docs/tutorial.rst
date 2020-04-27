@@ -2,7 +2,7 @@
 Tutorials
 =========
 
-For all tutorials, import mixsea and other libraries:
+For all tutorials below we need to import mixsea and a few other libraries:
 
 .. ipython:: python
 
@@ -26,20 +26,27 @@ A quick overview plot of the data:
 
     fig, ax = plt.subplots(nrows=1,
                            ncols=3,
-                           figsize=(7, 3),
+                           figsize=(9, 3),
                            constrained_layout=True, 
                            sharey=True)
     ax[0].plot(ctd['t'], ctd['z']);
-    ax[1].plot(ladcp['u'], ladcp['z']);
-    ax[1].plot(ladcp['v'], ladcp['z']);
-    ax[2].plot(ladcp['uz'], ladcp['z']);
+    ax[0].set(ylabel='depth [m]', xlabel='temperature [°C]');
+    ax[1].plot(ladcp['u'], ladcp['z'], label='u');
+    ax[1].plot(ladcp['v'], ladcp['z'], label='v');
+    ax[1].set(xlabel='velocity [m/s]');
+    ax[1].legend();
+    ax[2].plot(ladcp['uz'], ladcp['z'], label=r'u$_{z}$');
+    ax[2].plot(ladcp['vz'], ladcp['z'], label=r'v$_{z}$');
+    ax[2].set(xlabel='shear [1/s]');
+    ax[2].legend();
+    @savefig ctd_test_profile.png width=9in 
     ax[0].invert_yaxis()
-    @savefig ctd_test_profile.png width=7in 
-    ax[0].set(ylabel='depth [m]');
 
 This is cast 81 from the 2012 Samoan Passage cruise. The layer of cold
 Antarctic Bottom Water flowing through the Samoan Passage shows up in
 temperature, velocity and shear. See :cite:`voetetal15` for more information.
+
+Now we have data on hand to apply mixing parameterizations below.
 
 
 Thorpe scales / overturns
@@ -50,3 +57,72 @@ Thorpe scales / overturns
 Shear/strain
 ------------
 
+Set up parameters for the shear/strain parameterization:
+
+.. ipython:: python
+
+    # Center points of depth windows. Windows are half overlapping, i.e.
+    # their size (200m) is double the spacing here (100m).
+    window_size = 200
+    dz = window_size / 2
+    print("window size {} m, window spacing {} m".format(window_size, dz))
+    zbin = np.linspace(dz, dz * 60, num=60)
+    # Wavenumber vector. Starts at wavenumber corresponding to a 200m
+    # wavelength.
+    m = np.arange(2 * np.pi / 200, 2 * np.pi / 10, 2 * np.pi / 200)
+    # Wavenumber indices for integration. Shear is integrated from 300m to
+    # 100m scales. Strain is integrated from 150m to 30m.
+    m_include_sh = list(range(3))
+    m_include_st = list(range(1, 12))
+
+Now run the shear/strain parameterization:
+
+.. ipython:: python
+
+    (
+        P_shear,
+        P_strain,
+        Mmax_sh,
+        Mmax_st,
+        Rwtot,
+        krho_shst,
+        krho_st,
+        eps_shst,
+        eps_st,
+        m,
+        z_bin,
+    ) = mx.shearstrain.shearstrain(
+        ctd["s"],
+        ctd["t"],
+        ctd["p"],
+        ctd["z"],
+        ctd["lat"],
+        ctd["lon"],
+        ladcp["uz"],
+        ladcp["vz"],
+        ladcp["z"],
+        m=m,
+        z_bin=zbin,
+        m_include_sh=m_include_sh,
+        m_include_st=m_include_st,
+        ladcp_is_shear=True,
+    )
+
+Plot the results:
+
+.. ipython:: python
+
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(9, 5),
+    constrained_layout=True, sharey=True)
+    ax[0].plot(eps_shst, z_bin, label='shear/strain');
+    ax[0].plot(eps_st, z_bin, label='strain only');
+    ax[0].legend()
+    ax[0].set(xscale='log', xlabel=r'$\epsilon$ [W/kg]', ylabel='depth [m]',
+              title='turbulent dissipation');
+    ax[1].plot(krho_shst, z_bin, label='shear/strain');
+    ax[1].plot(krho_st, z_bin, label='strain only');
+    ax[1].legend();
+    ax[1].set(xscale='log', xlabel=r'k$_{\rho}$ [m$^2$/s]',
+              title='vertical diffusivity');
+    @savefig shear_strain_epsilon.png width=9in 
+    ax[0].invert_yaxis()
