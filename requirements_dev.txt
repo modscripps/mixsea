@@ -14,3 +14,5 @@ argh
 black
 isort
 pre-commit
+matplotlib
+ipython
