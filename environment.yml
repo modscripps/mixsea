@@ -4,6 +4,7 @@ dependencies:
   - numpy>=1.15
   - scipy
   - gsw
+  - ipython
   - pip
   - pip:
     - -r file:requirements_dev.txt
