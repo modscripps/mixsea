@@ -20,18 +20,13 @@ setup(
     long_description_content_type="text/x-rst",
     # Requirements
     python_requires=">=3.6",
-    install_requires=[
-        "numpy",
-        "gsw",
-        "scipy",
-    ],
+    install_requires=["numpy", "gsw", "scipy"],
     extras_require={
-        "test": [  # install these with: pip install ctdproc[test]
-            "pytest",
-        ],
+        "test": ["pytest"],  # install these with: pip install mixsea[test]
     },
     # Packaging
     packages=find_packages(include=["mixsea", "mixsea.*"], exclude=["*.tests"]),
+    package_data={"mixsea": ["tests/data/*.csv"]},
     include_package_data=True,
     zip_safe=False,
     platforms=["any"],  # or more specific, e.g. "win32", "cygwin", "osx"
