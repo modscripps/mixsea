@@ -84,6 +84,8 @@ def shearstrain(
         Wavenumber vector
     z_bin : array-like
         Center points of depth windows
+    Nmean : array-like
+        Average N per depth window calculated as root-mean from n2 above
     """
     # average lon, lat into one value if they are vectors
     lon = np.nanmean(lon)
@@ -100,7 +102,6 @@ def shearstrain(
 
     # Calculate shear
     if ladcp_is_shear is False:
-        print("calculating shear")
         uz = helpers.calc_shear(u, dd)
         vz = helpers.calc_shear(v, dd)
     else:
@@ -174,6 +175,7 @@ def shearstrain(
         Rwtot,
         krho_shst,
         krho_st,
+        Nmean,
     ) = compute_shearstrain_krho(
         shearn,
         z_sh,
@@ -204,6 +206,7 @@ def shearstrain(
         eps_st,
         m,
         z_bin,
+        Nmean,
     )
 
 
@@ -273,6 +276,8 @@ def compute_shearstrain_krho(
         krho calculated from both shear and strain spectra
     krho_st : array-like
         krho calculated from strain only
+    Nmean : array-like
+        Average N per depth window calculated as root-mean from n2 above
     """
     # Convert wavenumber includes in case they are given as range().
     if m_include_sh is not None:
@@ -293,6 +298,7 @@ def compute_shearstrain_krho(
     krho_shst = Mmax_sh.copy()
     krho_st = krho_shst.copy()
     Mmax_st = Mmax_sh.copy()
+    Nmean = Mmax_sh.copy()
 
     f = np.absolute(gsw.f(lat))
     f30 = gsw.f(30)
@@ -301,6 +307,7 @@ def compute_shearstrain_krho(
         zw = z_bin[iwin]
         iz = (z_sh >= (zw - delz)) & (z_sh <= (zw + delz))
         nn = np.sqrt(np.nanmean(n2[iz]))
+        Nmean[iwin] = nn
         Jf = f * np.arccosh(nn / f) / f30 / np.arccosh(N0 / f30)
 
         # Shear spectra
@@ -403,4 +410,4 @@ def compute_shearstrain_krho(
             Mmax_st[iwin] = np.nan
             krho_st[iwin] = np.nan
 
-    return P_shear, P_strain, Mmax_sh, Mmax_st, Rwtot, krho_shst, krho_st
+    return P_shear, P_strain, Mmax_sh, Mmax_st, Rwtot, krho_shst, krho_st, Nmean
