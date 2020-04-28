@@ -3,7 +3,7 @@ import numpy as np
 
 
 def eps_overturn(
-    P, Z, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan
+    P, Z, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan,
 ):
     """
     Calculate turbulent dissipation based on the Thorpe scale method.
@@ -92,17 +92,7 @@ def eps_overturn(
         sg = gsw.pot_rho_t_exact(SA, t, p, p_ref=refdi)
 
         # Create intermediate density profile
-        D0 = sg[0]
-        sgt = D0 - sg[0]
-        n = sgt / dnoise
-        n = np.fix(n)
-        sgi = [D0 + n * dnoise]  # first element
-        for i in np.arange(1, len(sg), 1):
-            sgt = sg[i] - sgi[i - 1]
-            n = sgt / dnoise
-            n = np.fix(n)
-            sgi.append(sgi[i - 1] + n * dnoise)
-        sgi = np.array(sgi)
+        sgi = intermediate_profile(sg, acc=dnoise, hinge=sg[0], kind="down")
 
         # Sort (important to use mergesort here)
         # Ds = np.sort(sgi, kind="mergesort")
@@ -190,6 +180,88 @@ def eps_overturn(
         out["eps"][x[ni]] = background_eps
 
     return out["Lt"], out["eps"], out["k"], out["n2"], out["dtdz"]
+
+
+def intermediate_profile_topdown(x, acc, hinge):
+    """Generate an intermediate profile starting at x[0] moving along the array.
+
+    See Ferron et. al. 1998 and Gargett and Garner 2008.
+
+    Parameters
+    ----------
+    x : array_like 1D
+        Profile of some quantity that the intermediate profile method can be
+        applied to e.g. temperature or density.
+    acc : float, optional
+        Accuracy parameter. The intermediate profile change in steps of acc.
+    hinge : float, optional
+        Intermediate profile values are equal to the hinge plus an integer
+        multiple of acc. It should be kept constant across profiles.
+
+    Returns
+    -------
+    xi : 1D numpy array
+        Intermediate profile.
+
+    """
+
+    # Initialise.
+    xi = np.zeros_like(x)
+    n = np.fix((x[0] - hinge) / acc)
+    xi[0] = hinge + n * acc
+
+    # Step through profile.
+    for i in range(len(x) - 1):
+        n = np.fix((x[i + 1] - xi[i]) / acc)
+        xi[i + 1] = xi[i] + n * acc
+
+    return xi
+
+
+def intermediate_profile(x, acc=5e-4, hinge=1000, kind="down"):
+    """Generate an intermediate profile of some quantity.
+
+    See Ferron et. al. 1998 and Gargett and Garner 2008.
+
+    Parameters
+    ----------
+    x : array_like 1D
+        Profile of some quantity that the intermediate profile method can be
+        applied to e.g. temperature or density.
+    acc : float, optional
+        Accuracy parameter. The intermediate profile change in steps of acc.
+    hinge : float, optional
+        Intermediate profile values are equal to the hinge plus an integer multiple
+        of acc. It should be kept constant across profiles.
+    kind : string, optional
+        Either 'up', 'down' or 'ave'. Default is ave. This argument determines
+        whether the method is applied top down (x[0] to x[end]), bottom up
+        (x[end] to [x[0]]) or the average of up and down.
+
+    Returns
+    -------
+    xi : 1D numpy array
+        Intermediate profile.
+
+    """
+
+    if not any(s in kind for s in ["up", "do", "av"]):
+        raise ValueError("The 'kind' argument must be 'up', 'down' or 'ave'.")
+
+    x = np.asarray(x)
+
+    if "up" in kind:
+        xf = np.flipud(x)
+        xi = np.flipud(intermediate_profile_topdown(xf, acc, hinge))
+    elif "do" in kind:
+        xi = intermediate_profile_topdown(x, acc, hinge)
+    elif "av" in kind:
+        xf = np.flipud(x)
+        xtd = intermediate_profile_topdown(x, acc, hinge)
+        xbu = np.flipud(intermediate_profile_topdown(xf, acc, hinge))
+        xi = (xtd + xbu) / 2.0
+
+    return xi
 
 
 def _consec_blocks(idx=None, combine_gap=0, combine_run=0):
