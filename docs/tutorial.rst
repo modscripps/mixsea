@@ -27,7 +27,7 @@ A quick overview plot of the data:
     fig, ax = plt.subplots(nrows=1,
                            ncols=3,
                            figsize=(9, 3),
-                           constrained_layout=True, 
+                           constrained_layout=True,
                            sharey=True)
     ax[0].plot(ctd['t'], ctd['z']);
     ax[0].set(ylabel='depth [m]', xlabel='temperature [°C]');
@@ -39,7 +39,7 @@ A quick overview plot of the data:
     ax[2].plot(ladcp['vz'], ladcp['z'], label=r'v$_{z}$');
     ax[2].set(xlabel='shear [1/s]');
     ax[2].legend();
-    @savefig ctd_test_profile.png width=9in 
+    @savefig ctd_test_profile.png width=9in
     ax[0].invert_yaxis()
 
 This is cast 81 from the 2012 Samoan Passage cruise. The layer of cold
@@ -51,6 +51,57 @@ Now we have data on hand to apply mixing parameterizations below.
 
 Thorpe scales / overturns
 -------------------------
+
+Calculate overturns.
+
+.. ipython:: python
+
+    dnoise = 5e-4  # Noise parameter
+    alpha_sq = 0.9  # Square of the coefficient relating the Thorpe and Ozmidov scales.
+    # Background value of epsilon applied where no overturns are detected.
+    background_eps = np.nan
+
+    Lt, eps, k, n2, dtdz = mx.overturn.eps_overturn(
+        ctd["p"],
+        ctd["z"],
+        ctd["t"],
+        ctd["s"],
+        ctd["lon"],
+        ctd["lat"],
+        dnoise,
+        alpha_sq,
+        background_eps,
+    )
+
+Take a look at the result.
+
+.. ipython:: python
+
+    n = np.sqrt(n2) * (86400 / (2 * np.pi))  # Calculate buoyancy frequency in units of cpd.
+
+    # Plot only in the depth range:
+    cut = (ctd['z'] > 4200) & (ctd['z'] < 4400)
+    z = ctd['z'][cut]
+
+    fig, axs = plt.subplots(1, 7, sharey=True, constrained_layout=True, figsize=(9, 5))
+    axs[0].plot(Lt[cut], z)
+    axs[1].plot(eps[cut], z)
+    axs[2].plot(k[cut], z)
+    axs[3].plot(n[cut], z)
+    axs[4].plot(dtdz[cut], z)
+    axs[5].plot(ctd["t"][cut], z)
+    axs[6].plot(ctd["s"][cut], z)
+    axs[0].invert_yaxis()
+    axs[0].set_ylabel("Depth [m]")
+    axs[0].set_xlabel("Thorpe scale [m]")
+    axs[1].set_xlabel(r"$\epsilon$ [W/kg]")
+    axs[2].set_xlabel(r"$K_\rho$ [m$^2$/s]")
+    axs[3].set_xlabel(r"$N$ [cpd]")
+    axs[4].set_xlabel(r"$dT/dz$ [$^\circ$C/m]")
+    axs[5].set_xlabel(r"Temperature [$^\circ$C]")
+    @savefig thorpe_epsilon.png width=9in
+    axs[6].set_xlabel("Salinity [g/kg]")
+    fig.align_labels()
 
 
 
@@ -124,5 +175,5 @@ Plot the results:
     ax[1].legend();
     ax[1].set(xscale='log', xlabel=r'k$_{\rho}$ [m$^2$/s]',
               title='vertical diffusivity');
-    @savefig shear_strain_epsilon.png width=9in 
+    @savefig shear_strain_epsilon.png width=9in
     ax[0].invert_yaxis()
