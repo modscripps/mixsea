@@ -49,6 +49,8 @@ napoleon_numpy_docstring = True
 napoleon_use_param = False
 napoleon_use_ivar = True
 
+nbsphinx_kernel_name = "python3"
+
 extlinks = {
     "issue": ("https://github.com/gunnarvoet/ctdproc/issues/%s", "GH"),
     "pull": ("https://github.com/gunnarvoet/ctdproc/pull/%s", "PR"),
