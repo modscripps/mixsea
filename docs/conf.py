@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.abspath(".."))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.extlinks",
@@ -44,6 +45,13 @@ extensions = [
     "nbsphinx",
     "sphinx.ext.mathjax",
 ]
+
+autosummary_generate = True
+autodoc_typehints = "none"
+
+numpydoc_class_members_toctree = True
+numpydoc_show_class_members = False
+
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_param = False
@@ -96,7 +104,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
