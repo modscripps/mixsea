@@ -20,6 +20,7 @@ Contents
    installation
    usage
    tutorialnb
+   intermediate_profile_example
    api
    contributing
    authors
