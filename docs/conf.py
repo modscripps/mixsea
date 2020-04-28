@@ -41,6 +41,8 @@ extensions = [
     "IPython.sphinxext.ipython_directive",
     "IPython.sphinxext.ipython_console_highlighting",
     "sphinxcontrib.bibtex",
+    "nbsphinx",
+    "sphinx.ext.mathjax",
 ]
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True

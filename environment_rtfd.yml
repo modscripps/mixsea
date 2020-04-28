@@ -1,0 +1,14 @@
+name: mixsea-rtfd
+channels:
+  - conda-forge
+dependencies:
+  - python=3.6
+  - numpy>=1.15
+  - gsw
+  - scipy
+  - matplotlib
+  - ipython
+  - ipykernel
+  - sphinxcontrib-bibtex
+  - nbsphinx
+  - pandoc

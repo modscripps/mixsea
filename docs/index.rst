@@ -6,7 +6,7 @@
 
    installation
    usage
-   tutorial
+   tutorialnb
    source/modules
    contributing
    authors

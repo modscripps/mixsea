@@ -1,6 +1,0 @@
-numpy>=1.15
-gsw
-scipy
-matplotlib
-ipython
-sphinxcontrib-bibtex
