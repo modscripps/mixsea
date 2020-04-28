@@ -7,7 +7,6 @@ dependencies:
   - gsw
   - scipy
   - matplotlib
-  - ipython
   - ipykernel
   - sphinxcontrib-bibtex
   - nbsphinx
