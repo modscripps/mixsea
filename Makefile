@@ -72,8 +72,6 @@ coverage: ## check code coverage quickly with the default Python
 	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
-	rm -f docs/mixsea.rst
-	rm -f docs/modules.rst
 	rm -rf docs/source
 	sphinx-apidoc -o docs/source/ mixsea
 	$(MAKE) -C docs clean

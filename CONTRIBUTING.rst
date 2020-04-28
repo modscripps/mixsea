@@ -9,7 +9,7 @@ Contributing
 
 .. note::
 
-  This document builds is based on ideas and guidelines from the
+  This document is based on ideas and guidelines from the
   `xarray Contributing Guide 
   <http://xarray.pydata.org/en/stable/contributing.html>`_,
   which in turn builds largely upon the
@@ -270,7 +270,7 @@ Some other important things to know about the docs:
 
 
 Building the documentation
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+==========================
 
 Navigate to your root ``mixsea/`` directory in the console and run::
 
