@@ -1,7 +1,29 @@
 name: mixsea
 dependencies:
   - python=3.8
+  - numpy>=1.15
+  - scipy
+  - gsw
+  - matplotlib
+  - pandoc
+  - bump2version
+  - wheel
+  - watchdog
+  - flake8
+  - tox
+  - twine
+  - pytest
+  - pytest-runner
+  - pytest-datadir
+  - sphinx
+  - sphinx_rtd_theme
+  - sphinxcontrib-bibtex
+  - nbsphinx
+  - pandoc
+  - argh
+  - black
+  - isort
+  - pre-commit
+  - ipython
+  - ipykernel
   - pip
-  - pip:
-    - -r file:requirements.txt
-    - -r file:requirements_dev.txt
