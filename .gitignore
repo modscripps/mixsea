@@ -2,6 +2,7 @@
 mixsea.egg-info/
 docs/_build/
 docs/.ipynb_checkpoints/
+docs/generated/
 .tox
 .vscode
 scratch/
