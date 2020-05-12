@@ -3,7 +3,7 @@ import numpy as np
 
 
 def eps_overturn(
-    P, Z, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan,
+    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan,
 ):
     """
     Calculate turbulent dissipation based on the Thorpe scale method.
@@ -12,8 +12,6 @@ def eps_overturn(
     ----------
     P : array-like
         Pressure [dbar]
-    Z : array-like
-        Depth [m]
     T : array-like
         In-situ temperature [ITS90, °C]
     S : array-like
@@ -44,23 +42,29 @@ def eps_overturn(
       Temperature gradient of each overturn [°/m]
 
     """
-    # average lon, lat into one value if they are vectors
-    lon = np.nanmean(lon)
-    lat = np.nanmean(lat)
+    # Estimate depth from pressure.
+    Z = -gsw.z_from_p(P, lat)
+    
+    # Find non-NaNs
+    x = np.squeeze(np.where(np.isfinite(T + S + P)))
 
-    # avoid error due to nan's in conditional statements
-    # np.seterr(invalid="ignore")
+    # Extract variables without the NaNs
+    p = P[x].copy()
+    z = Z[x].copy()
+    z = z.astype("float")
+    t = T[x].copy()
+    s = S[x].copy()
 
-    z0 = Z.copy()
-    z0 = z0.astype("float")
-
+    SA = gsw.SA_from_SP(s, t, lon, lat)
+    CT = gsw.CT_from_t(SA, t, p)
+    
     # populate output dict
     out = {}
-    out["Lt"] = np.zeros_like(z0) * np.nan
-    out["eps"] = np.zeros_like(z0) * np.nan
-    out["k"] = np.zeros_like(z0) * np.nan
-    out["n2"] = np.zeros_like(z0) * np.nan
-    out["dtdz"] = np.zeros_like(z0) * np.nan
+    out["Lt"] = np.full_like(P, np.nan)
+    out["eps"] = np.full_like(P, np.nan)
+    out["k"] = np.full_like(P, np.nan)
+    out["n2"] = np.full_like(P, np.nan)
+    out["dtdz"] = np.full_like(P, np.nan)
 
     # We need to calculate potential density and temperature at reference depths
     # If the profile is shallower than 1200 m, use only one depth range.
@@ -73,21 +77,6 @@ def eps_overturn(
         dref = (np.nanmax(P) - np.nanmin(P)) + 1
 
     for refdi in refd:
-        # Find non-NaNs
-        x = np.squeeze(np.where(np.isfinite(T + S + P)))
-
-        # Extract variables without the NaNs
-        p = P[x].copy()
-        z = Z[x].copy()
-        z = z.astype("float")
-        t = T[x].copy()
-        s = S[x].copy()
-        # cn2   = ctdn['n2'][x].copy()
-
-        SA = gsw.SA_from_SP(s, t, lon, lat)
-        CT = gsw.CT_from_t(SA, t, p)
-        # PT = gsw.pt0_from_t(SA, t, p)
-
         # Calculate potential density
         sg = gsw.pot_rho_t_exact(SA, t, p, p_ref=refdi)
 
