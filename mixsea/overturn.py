@@ -83,9 +83,8 @@ def eps_overturn(
         # Create intermediate density profile
         sgi = intermediate_profile(sg, acc=dnoise, hinge=sg[0], kind="down")
 
-        # Sort (important to use mergesort here)
-        # Ds = np.sort(sgi, kind="mergesort")
-        Is = np.argsort(sgi, kind="mergesort")
+        # Find sorted indices and overturning patches
+        Is, patches = find_overturns(sgi)
 
         # Sort temperature profile as well for calculation of dT/dz
         # Thetas = np.sort(PT, kind='mergesort')
@@ -96,10 +95,7 @@ def eps_overturn(
         cumTH = np.cumsum(TH)
 
         # make sure there are any overturns
-        if np.sum(cumTH) > 2:
-
-            aa = np.where(cumTH > 2)[0]
-            blocks = _consec_blocks(aa, combine_gap=1)
+        if np.any(patches):
 
             # Sort temperature and salinity based on the density sorting index
             # for calculating the buoyancy frequency
@@ -109,12 +105,12 @@ def eps_overturn(
 
             # Loop over detected overturns and calculate Thorpe Scales, N2
             # and dT/dz over the overturn region
-            THsc = np.zeros_like(z) * np.nan
-            N2 = np.zeros_like(z) * np.nan
-            # CN2  = np.ones_like(z)*np.nan
-            DTDZ = np.zeros_like(z) * np.nan
+            THsc = np.full_like(z, np.nan)
+            N2 = np.full_like(z, np.nan)
+            DTDZ = np.full_like(z, np.nan)
 
-            for iostart, ioend in zip(blocks[:, 0], blocks[:, 1]):
+            for patch in patches:
+                iostart, ioend = patch[0], patch[1]
                 idx = np.arange(iostart, ioend + 1, 1)
                 sc = np.sqrt(np.mean(np.square(TH[idx])))
                 # ctdn2 = np.nanmean(cn2[idx])
@@ -169,6 +165,30 @@ def eps_overturn(
         out["eps"][x[ni]] = background_eps
 
     return out["Lt"], out["eps"], out["k"], out["n2"], out["dtdz"]
+
+
+def find_overturns(x):
+    """Find the indices of unstable patches.
+
+    Parameters
+    ----------
+    x : array_like 1D
+        Profile of some quantity from which overturns can be detected 
+        e.g. temperature or density.
+
+    Returns
+    -------
+    idx_sorted : 1D numpy array
+        Indices that sort the data x.
+    idx_patches : (N, 2) numpy array
+        Start and end indices of the overturns. 
+
+    """
+    idx = np.arange(x.size, dtype=int)
+    idx_sorted = np.argsort(x, kind="mergesort")
+    idx_cumulative = np.cumsum(idx_sorted - idx)
+    idx_patches = _consec_blocks(np.where(idx_cumulative > 2)[0], combine_gap=1)
+    return idx_sorted, idx_patches
 
 
 def intermediate_profile_topdown(x, acc, hinge):
