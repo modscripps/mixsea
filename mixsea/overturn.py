@@ -3,7 +3,7 @@ import numpy as np
 
 
 def eps_overturn(
-    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan,
+    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan, return_diagnostics=False,
 ):
     """
     Calculate turbulent dissipation based on the Thorpe scale method.
@@ -20,26 +20,26 @@ def eps_overturn(
         Longitude of observation
     lat : float
         Latitude of observation
-    dnoise : float
-        Noise level of density [kg/m^3] (default 5e-4)
-    alpha_sq : float
+    dnoise : float, optional
+        Noise level of density [kg/m^3]. Default is 5e-4.
+    alpha_sq : float, optional
         Square of proportionality constant between Thorpe and Ozmidov scale.
-        (default 0.9)
-    background_eps : float
+        Default is 0.9.
+    background_eps : float, optional
         Background epsilon where no overturn detected. Defaults to np.nan.
+    return_diagnostics : dict, optional
+        Default is False. If True, this function will return a dictionary containing 
+        variables such as the Thorpe scale Lt, etc. 
 
     Returns
     -------
-    Lt : array-like
-      Thorpe length scale [m]
     eps : array-like
-      Turbulent dissipation [W/kg]
-    k : array-like
-      Turbulent diffusivity [m^2/s]
+        Turbulent dissipation [W/kg]
     n2 : array-like
-      Background stratification of each overturn detected [s^-2]
-    dtdz : array-like
-      Temperature gradient of each overturn [°/m]
+        Background stratification of each overturn detected [s^-2]
+    diag : dict, optional
+        Dictionary of diagnositc variables, set return with the `return_diagnostics' argument. 
+
 
     """
     # Estimate depth from pressure.
@@ -58,13 +58,14 @@ def eps_overturn(
     SA = gsw.SA_from_SP(s, t, lon, lat)
     CT = gsw.CT_from_t(SA, t, p)
     
-    # populate output dict
-    out = {}
-    out["Lt"] = np.full_like(P, np.nan)
-    out["eps"] = np.full_like(P, np.nan)
-    out["k"] = np.full_like(P, np.nan)
-    out["n2"] = np.full_like(P, np.nan)
-    out["dtdz"] = np.full_like(P, np.nan)
+    # Initialise diagnostics.
+    diag = {}
+    diag["k"] = np.full_like(P, np.nan)
+    diag["Lt"] = np.full_like(P, np.nan)
+    diag["dtdz"] = np.full_like(P, np.nan)
+    
+    eps = np.full_like(P, np.nan)
+    n2 = np.full_like(P, np.nan)
 
     # We need to calculate potential density and temperature at reference depths
     # If the profile is shallower than 1200 m, use only one depth range.
@@ -116,7 +117,7 @@ def eps_overturn(
                 # ctdn2 = np.nanmean(cn2[idx])
                 # Buoyancy frequency calculated over the overturn from sorted
                 # profiles. Go beyond overturn.
-                n2, Np = gsw.Nsquared(
+                n2_, Np = gsw.Nsquared(
                     SAs[[iostart - 1, ioend + 1]],
                     CTs[[iostart - 1, ioend + 1]],
                     p[[iostart - 1, ioend + 1]],
@@ -125,7 +126,7 @@ def eps_overturn(
                 # Fill depth range of the overturn with the Thorpe scale
                 THsc[idx] = sc
                 # Fill depth range of the overturn with N^2
-                N2[idx] = n2
+                N2[idx] = n2_
 
                 # Fill depth range of the overturn with local temperature gradient
                 if iostart > 0:
@@ -154,17 +155,21 @@ def eps_overturn(
             THk[iz[ni]] = 0.2 * THepsilon[iz[ni]] / N2[iz[ni]]
 
             # Pick only data for this reference depth range
-            out["eps"][x[iz]] = THepsilon[iz]
-            out["k"][x[iz]] = THk[iz]
-            out["n2"][x[iz]] = N2[iz]
-            out["Lt"][x[iz]] = THsc[iz]
-            out["dtdz"][x[iz]] = DTDZ[iz]
+            eps[x[iz]] = THepsilon[iz]
+            n2[x[iz]] = N2[iz]
+            
+            diag["k"][x[iz]] = THk[iz]
+            diag["Lt"][x[iz]] = THsc[iz]
+            diag["dtdz"][x[iz]] = DTDZ[iz]
 
         # Fill with background epsilon
-        ni = np.where(np.isnan(out["eps"][x]))
-        out["eps"][x[ni]] = background_eps
+        ni = np.where(np.isnan(eps[x]))
+        eps[x[ni]] = background_eps
 
-    return out["Lt"], out["eps"], out["k"], out["n2"], out["dtdz"]
+    if return_diagnostics:
+        return eps, n2, diag
+    else:
+        return eps, n2
 
 
 def find_overturns(x):
