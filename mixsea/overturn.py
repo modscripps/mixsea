@@ -2,11 +2,82 @@ import gsw
 import numpy as np
 
 
+def nan_eps_overturn(
+    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan, return_diagnostics=False,
+):
+    """
+    Calculate turbulent dissipation based on the Thorpe scale method attempting to deal NaN values in the input data.
+
+    Parameters
+    ----------
+    P : array-like
+        Pressure [dbar]
+    T : array-like
+        In-situ temperature [ITS90, °C]
+    S : array-like
+        Salinity [PSU]
+    lon : float
+        Longitude of observation
+    lat : float
+        Latitude of observation
+    dnoise : float, optional
+        Noise level of density [kg/m^3]. Default is 5e-4.
+    alpha_sq : float, optional
+        Square of proportionality constant between Thorpe and Ozmidov scale.
+        Default is 0.9.
+    background_eps : float, optional
+        Background epsilon where no overturn detected. Defaults to np.nan.
+    return_diagnostics : dict, optional
+        Default is False. If True, this function will return a dictionary containing 
+        variables such as the Thorpe scale Lt, etc. 
+
+    Returns
+    -------
+    eps : array-like
+        Turbulent dissipation [W/kg]
+    n2 : array-like
+        Background stratification of each overturn detected [s^-2]
+    diag : dict, optional
+        Dictionary of diagnositc variables, set return with the `return_diagnostics' argument. 
+
+
+    """
+    
+    # Find non-NaNs
+    notnan = np.isfinite(P) & np.isfinite(T) & np.isfinite(S)
+    isnan = ~notnan
+    
+    if isnan.sum() == 0:  # If there are no NaNs then return. 
+        return eps_overturn(P, T, S, lon, lat, dnoise, alpha_sq, background_eps, return_diagnostics)
+    
+    eps = np.full_like(P, np.nan)
+    n2 = np.full_like(P, np.nan)
+    
+    if return_diagnostics:
+        eps[notnan], n2[notnan], diag = eps_overturn(P[notnan], T[notnan], S[notnan], lon, lat, dnoise, alpha_sq, background_eps, return_diagnostics)
+        
+        # Replace nans in diagnostics if the size and shape seems right:
+        Nnotnans = notnan.sum()
+        for key in diag:
+            if (np.size(diag[key]) == Nnotnans) & (np.ndim(diag[key]) == 1):
+                ar = np.full_like(P, np.nan)
+                ar[notnan] = diag[key]
+                diag[key] = ar  # This will wipe out the old item.
+        
+        return eps, n2, diag
+        
+    else:
+        eps[notnan], n2[notnan] = eps_overturn(P[notnan], T[notnan], S[notnan], lon, lat, dnoise, alpha_sq, background_eps)
+        return eps, n2
+    
+
+
 def eps_overturn(
     P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan, return_diagnostics=False,
 ):
     """
-    Calculate turbulent dissipation based on the Thorpe scale method.
+    Calculate turbulent dissipation based on the Thorpe scale method. This function cannot handle
+    NaNs in the input data, but there is another called `nan_eps_overturn' that attempts to.
 
     Parameters
     ----------
@@ -43,20 +114,10 @@ def eps_overturn(
 
     """
     # Estimate depth from pressure.
-    Z = -gsw.z_from_p(P, lat)
-    
-    # Find non-NaNs
-    x = np.squeeze(np.where(np.isfinite(T + S + P)))
+    depth = -gsw.z_from_p(P, lat)
 
-    # Extract variables without the NaNs
-    p = P[x].copy()
-    z = Z[x].copy()
-    z = z.astype("float")
-    t = T[x].copy()
-    s = S[x].copy()
-
-    SA = gsw.SA_from_SP(s, t, lon, lat)
-    CT = gsw.CT_from_t(SA, t, p)
+    SA = gsw.SA_from_SP(S, T, lon, lat)
+    CT = gsw.CT_from_t(SA, T, P)
     
     # Initialise diagnostics.
     diag = {}
@@ -79,7 +140,7 @@ def eps_overturn(
 
     for refdi in refd:
         # Calculate potential density
-        sg = gsw.pot_rho_t_exact(SA, t, p, p_ref=refdi)
+        sg = gsw.pot_rho_t_exact(SA, T, P, p_ref=refdi)
 
         # Create intermediate density profile
         sgi = intermediate_profile(sg, acc=dnoise, hinge=sg[0], kind="down")
@@ -92,7 +153,7 @@ def eps_overturn(
         # ThIs = np.argsort(PT, kind='mergesort')
 
         # Calculate Thorpe length scale
-        TH = z[Is] - z
+        TH = depth[Is] - depth
         cumTH = np.cumsum(TH)
 
         # make sure there are any overturns
@@ -106,9 +167,9 @@ def eps_overturn(
 
             # Loop over detected overturns and calculate Thorpe Scales, N2
             # and dT/dz over the overturn region
-            THsc = np.full_like(z, np.nan)
-            N2 = np.full_like(z, np.nan)
-            DTDZ = np.full_like(z, np.nan)
+            THsc = np.full_like(P, np.nan)
+            N2 = np.full_like(P, np.nan)
+            DTDZ = np.full_like(P, np.nan)
 
             for patch in patches:
                 iostart, ioend = patch[0], patch[1]
@@ -120,7 +181,7 @@ def eps_overturn(
                 n2_, Np = gsw.Nsquared(
                     SAs[[iostart - 1, ioend + 1]],
                     CTs[[iostart - 1, ioend + 1]],
-                    p[[iostart - 1, ioend + 1]],
+                    P[[iostart - 1, ioend + 1]],
                     lat,
                 )
                 # Fill depth range of the overturn with the Thorpe scale
@@ -131,16 +192,16 @@ def eps_overturn(
                 # Fill depth range of the overturn with local temperature gradient
                 if iostart > 0:
                     PTov = CTs[iostart - 1 : ioend + 1]
-                    zov = z[iostart - 1 : ioend + 1]
+                    zov = depth[iostart - 1 : ioend + 1]
                 else:
                     PTov = CTs[iostart : ioend + 1]
-                    zov = z[iostart : ioend + 1]
+                    zov = depth[iostart : ioend + 1]
                 local_dtdz = (np.min(PTov) - np.max(PTov)) / (np.max(zov) - np.min(zov))
                 DTDZ[idx] = local_dtdz
 
             # Find data for this reference depth range
             iz = np.squeeze(
-                np.where(((p > refdi - dref / 2) & (p <= refdi + dref / 2)))
+                np.where(((P > refdi - dref / 2) & (P <= refdi + dref / 2)))
             )
             # There shouldn't be any negative N^2 the way we calculate it -
             # but only over the current depth range!
@@ -155,16 +216,15 @@ def eps_overturn(
             THk[iz[ni]] = 0.2 * THepsilon[iz[ni]] / N2[iz[ni]]
 
             # Pick only data for this reference depth range
-            eps[x[iz]] = THepsilon[iz]
-            n2[x[iz]] = N2[iz]
+            eps[iz] = THepsilon[iz]
+            n2[iz] = N2[iz]
             
-            diag["k"][x[iz]] = THk[iz]
-            diag["Lt"][x[iz]] = THsc[iz]
-            diag["dtdz"][x[iz]] = DTDZ[iz]
+            diag["k"][iz] = THk[iz]
+            diag["Lt"][iz] = THsc[iz]
+            diag["dtdz"][iz] = DTDZ[iz]
 
         # Fill with background epsilon
-        ni = np.where(np.isnan(eps[x]))
-        eps[x[ni]] = background_eps
+        eps[np.isnan(eps)] = background_eps
 
     if return_diagnostics:
         return eps, n2, diag
