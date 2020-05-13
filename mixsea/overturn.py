@@ -121,6 +121,15 @@ def eps_overturn(
 
 
     """
+    P = np.asarray(P)
+    T = np.asarray(T)
+    S = np.asarray(S)
+    
+    if not (P.size == T.size == S.size):
+        raise ValueError('Input array sizes do not match. P.size = {}, T.size = {}, S.size = {}'.format(P.size, T.size, S.size))
+    
+    ndata = P.size
+    
     # Estimate depth from pressure.
     depth = -gsw.z_from_p(P, lat)
 
@@ -132,12 +141,17 @@ def eps_overturn(
     diag["eps"] = np.full_like(P, np.nan)
     diag["n2"] = np.full_like(P, np.nan)
     diag["Lt"] = np.full_like(P, np.nan)
-    diag["dtdz"] = np.full_like(P, np.nan)
+    diag["dens"] = np.full_like(P, np.nan)
+    diag["dens_sorted"] = np.full_like(P, np.nan)
+    diag["dens_ip"] = np.full_like(P, np.nan)
+    # Flags are raised if there are problems. 
     diag["noise_flag"] = np.full_like(P, False, dtype=bool)
+    diag["n2_flag"] = np.full_like(P, False, dtype=bool)
+    diag["ends_flag"] = np.full_like(P, False, dtype=bool)
 
-    # Potential density is only meanful near the reference pressure. For a deep profile
+    # Potential density is only meaningful near the reference pressure. For a deep profile
     # we may need to select several reference pressures. To do so, we find the pressure
-    # bins that best contain the data. 
+    # bins that best contain the data
     pbinwidth = 1000. # In future we could have this as an argument. 
     pbinmin = np.floor(P.min()/pbinwidth)*pbinwidth
     pbinmax = np.ceil(P.max()/pbinwidth)*pbinwidth
@@ -150,7 +164,7 @@ def eps_overturn(
         dens = gsw.pot_rho_t_exact(SA, T, P, p_ref=p_refs[idx_bin])
 
         if use_ip: # Create intermediate density profile
-            dens_ip = intermediate_profile(dens, acc=dnoise, hinge=dens[0], kind="down")
+            dens_ip = intermediate_profile(dens, acc=dnoise, hinge=1000, kind="down")  # TODO: make hinge optional
             Is, patches = find_overturns(dens_ip)
         else:
             Is, patches = find_overturns(dens)
@@ -171,17 +185,25 @@ def eps_overturn(
             # and dT/dz over the overturn region
             Lt = np.full_like(P, np.nan)
             N2 = np.full_like(P, np.nan)
-            dTdz = np.full_like(P, np.nan)
             noise_flag = np.full_like(P, False, dtype=bool)
+            n2_flag = np.full_like(P, False, dtype=bool)
+            ends_flag = np.full_like(P, False, dtype=bool)
 
             for patch in patches:
-                i0, i1 = patch[0], patch[1]
+                i0, i1 = patch[0], patch[1] + 1
                 idx = np.arange(i0, i1 + 1, 1)
+                
+                # If beginning, raise flag.
+                if i0 == 0:
+                    ends_flag[idx] = True
+                # If end, raise flag. 
+                if i1 == ndata - 1:
+                    ends_flag[idx] = True
                 
                 # If we are not using the intermediate profile method, need to check the density difference is greater than 
                 # the noise threshold.
                 if ~use_ip:
-                    dens_diff = dens_sorted[i1+1] - dens_sorted[i0]
+                    dens_diff = dens_sorted[i1] - dens_sorted[i0]
                     if dens_diff < dnoise:
                         noise_flag[idx] = True
                 
@@ -189,45 +211,57 @@ def eps_overturn(
                 Lt[idx] = np.sqrt(np.mean(np.square(thorpe_displacement[idx])))
                 
                 # Buoyancy frequency calculated over the overturn from sorted
-                # profiles. Go beyond overturn.
-                N2[idx], _ = gsw.Nsquared(
-                    SA_sorted[[i0 - 1, i1 + 1]],
-                    CT_sorted[[i0 - 1, i1 + 1]],
-                    P[[i0 - 1, i1 + 1]],
+                # profiles. Go beyond overturn. Need to add 2 for this, unless end.
+                if i1 == ndata - 1:
+                    addi = 0
+                else:
+                    addi = 1
+                    
+                if i0 == 0:
+                    subi = 0
+                else:
+                    subi = 1
+                    
+                n2o, _ = gsw.Nsquared(
+                    SA_sorted[[i0 - subi, i1 + addi]],
+                    CT_sorted[[i0 - subi, i1 + addi]],
+                    P[[i0 - subi, i1 + addi]],
                     lat,
                 )
+                N2[idx] = n2o
+                
+                if n2o < 0:  # Flag negative N squared. 
+                    n2_flag[idx] = True
 
-                # Fill depth range of the overturn with local temperature gradient
-                if i0 > 0:
-                    PTov = CT_sorted[i0 - 1 : i1 + 1]
-                    zov = depth[i0 - 1 : i1 + 1]
-                else:
-                    PTov = CT_sorted[i0 : i1 + 1]
-                    zov = depth[i0 : i1 + 1]
-                local_dTdz = (np.min(PTov) - np.max(PTov)) / (np.max(zov) - np.min(zov))
-                dTdz[idx] = local_dTdz
-
-            # Find and select data for this reference pressure range only.
-            inbin = (P > pbins[idx_bin]) & (P < pbins[idx_bin+1])
-
-            diag["n2"][inbin] = N2[inbin]
-            diag["Lt"][inbin] = Lt[inbin]
-            diag["dtdz"][inbin] = dTdz[inbin]
-            diag["noise_flag"][inbin] = noise_flag[inbin]
-            
-        # Finally calculate epsilon for diagnostics, avoid nans and inf.
-        isfinite = np.isfinite(diag["n2"]) & np.isfinite(diag["Lt"])
-        diag['eps'][isfinite] = alpha_sq * diag["Lt"][isfinite] ** 2 * diag["n2"][isfinite] ** 1.5
+        # Find and select data for this reference pressure range only.
+        inbin = (P > pbins[idx_bin]) & (P < pbins[idx_bin+1])
         
-        # Use flags to get rid of bad overturns in basic output
-        isbad = diag["noise_flag"]
-        eps = diag['eps'].copy()
-        eps[isbad] = np.nan
-        n2 = diag['n2'].copy()
-        n2[isbad] = np.nan
+        # Fill flags.
+        diag["noise_flag"][inbin] = noise_flag[inbin]
+        diag["n2_flag"][inbin] = n2_flag[inbin]
+        diag['ends_flag'][inbin] = ends_flag[inbin]
+        
+        # Fill other diagnostics. 
+        diag["n2"][inbin] = N2[inbin]
+        diag["Lt"][inbin] = Lt[inbin]
+        diag["dens"][inbin] = dens[inbin]
+        diag["dens_sorted"][inbin] = dens_sorted[inbin]
+        if use_ip:
+            diag["dens_ip"][inbin] = dens_ip[inbin]
             
-        # Fill with background epsilon
-        eps[np.isnan(eps)] = background_eps
+    # Finally calculate epsilon for diagnostics, avoid nans, inf and negative n2.
+    isgood = np.isfinite(diag["n2"]) & np.isfinite(diag["Lt"]) & ~diag["n2_flag"]
+    diag['eps'][isgood] = alpha_sq * diag["Lt"][isgood] ** 2 * diag["n2"][isgood] ** 1.5
+
+    # Use flags to get rid of bad overturns in basic output
+    isbad = diag["noise_flag"] | diag['n2_flag'] | diag['ends_flag']
+    eps = diag['eps'].copy()
+    eps[isbad] = np.nan
+    n2 = diag['n2'].copy()
+    n2[isbad] = np.nan
+
+    # Fill with background epsilon
+    eps[np.isnan(eps)] = background_eps
 
     if return_diagnostics:
         return eps, n2, diag
