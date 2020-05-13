@@ -135,19 +135,19 @@ def eps_overturn(
     diag["dtdz"] = np.full_like(P, np.nan)
     diag["noise_flag"] = np.full_like(P, False, dtype=bool)
 
-    # We need to calculate potential density and temperature at reference depths
-    # If the profile is shallower than 1200 m, use only one depth range.
-    # Otherwise, use several depth reference levels.
-    if (np.nanmax(P) - np.nanmin(P)) > 1200:
-        dref = 1000
-        refd = np.arange(np.nanmin(P) + dref / 2, np.nanmax(P), dref)
-    else:
-        refd = (np.nanmin(P) + np.nanmax(P)) / 2
-        dref = (np.nanmax(P) - np.nanmin(P)) + 1
+    # Potential density is only meanful near the reference pressure. For a deep profile
+    # we may need to select several reference pressures. To do so, we find the pressure
+    # bins that best contain the data. 
+    pbinwidth = 1000. # In future we could have this as an argument. 
+    pbinmin = np.floor(P.min()/pbinwidth)*pbinwidth
+    pbinmax = np.ceil(P.max()/pbinwidth)*pbinwidth
+    pbins = np.arange(pbinmin, pbinmax+pbinwidth, pbinwidth)
+    p_refs = 0.5*(pbins[1:] + pbins[:-1])  # Use mid point pressure as reference pressure.
+    nbins = p_refs.size
 
-    for refdi in refd:
+    for idx_bin in range(nbins):
         # Calculate potential density
-        dens = gsw.pot_rho_t_exact(SA, T, P, p_ref=refdi)
+        dens = gsw.pot_rho_t_exact(SA, T, P, p_ref=p_refs[idx_bin])
 
         if use_ip: # Create intermediate density profile
             dens_ip = intermediate_profile(dens, acc=dnoise, hinge=dens[0], kind="down")
@@ -207,16 +207,13 @@ def eps_overturn(
                 local_dTdz = (np.min(PTov) - np.max(PTov)) / (np.max(zov) - np.min(zov))
                 dTdz[idx] = local_dTdz
 
-            # Find data for this reference depth range
-            iz = np.squeeze(
-                np.where(((P > refdi - dref / 2) & (P <= refdi + dref / 2)))
-            )
+            # Find and select data for this reference pressure range only.
+            inbin = (P > pbins[idx_bin]) & (P < pbins[idx_bin+1])
 
-            # Pick only data for this reference depth range
-            diag["n2"][iz] = N2[iz]
-            diag["Lt"][iz] = Lt[iz]
-            diag["dtdz"][iz] = dTdz[iz]
-            diag["noise_flag"][iz] = noise_flag[iz]
+            diag["n2"][inbin] = N2[inbin]
+            diag["Lt"][inbin] = Lt[inbin]
+            diag["dtdz"][inbin] = dTdz[inbin]
+            diag["noise_flag"][inbin] = noise_flag[inbin]
             
         # Finally calculate epsilon for diagnostics, avoid nans and inf.
         isfinite = np.isfinite(diag["n2"]) & np.isfinite(diag["Lt"])
