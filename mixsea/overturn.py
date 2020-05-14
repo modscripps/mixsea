@@ -3,7 +3,17 @@ import numpy as np
 
 
 def nan_eps_overturn(
-    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan, use_ip=True, Nsq_method='teos', return_diagnostics=False,
+    P,
+    T,
+    S,
+    lon,
+    lat,
+    dnoise=5e-4,
+    alpha_sq=0.9,
+    background_eps=np.nan,
+    use_ip=True,
+    Nsq_method="teos",
+    return_diagnostics=False,
 ):
     """
     Calculate turbulent dissipation based on the Thorpe scale method attempting to deal NaN values in the input data.
@@ -49,20 +59,44 @@ def nan_eps_overturn(
 
 
     """
-    
+
     # Find non-NaNs
     notnan = np.isfinite(P) & np.isfinite(T) & np.isfinite(S)
     isnan = ~notnan
-    
-    if isnan.sum() == 0:  # If there are no NaNs then return. 
-        return eps_overturn(P, T, S, lon, lat, dnoise, alpha_sq, background_eps, use_ip, Nsq_method, return_diagnostics)
-    
+
+    if isnan.sum() == 0:  # If there are no NaNs then return.
+        return eps_overturn(
+            P,
+            T,
+            S,
+            lon,
+            lat,
+            dnoise,
+            alpha_sq,
+            background_eps,
+            use_ip,
+            Nsq_method,
+            return_diagnostics,
+        )
+
     eps = np.full_like(P, np.nan)
     n2 = np.full_like(P, np.nan)
-    
+
     if return_diagnostics:
-        eps[notnan], n2[notnan], diag = eps_overturn(P[notnan], T[notnan], S[notnan], lon, lat, dnoise, alpha_sq, background_eps, use_ip, Nsq_method, return_diagnostics)
-        
+        eps[notnan], n2[notnan], diag = eps_overturn(
+            P[notnan],
+            T[notnan],
+            S[notnan],
+            lon,
+            lat,
+            dnoise,
+            alpha_sq,
+            background_eps,
+            use_ip,
+            Nsq_method,
+            return_diagnostics,
+        )
+
         # Replace nans in diagnostics if the size and shape seems right:
         Nnotnans = notnan.sum()
         for key in diag:
@@ -70,17 +104,37 @@ def nan_eps_overturn(
                 ar = np.full_like(P, np.nan)
                 ar[notnan] = diag[key]
                 diag[key] = ar  # This will wipe out the old item.
-        
+
         return eps, n2, diag
-        
+
     else:
-        eps[notnan], n2[notnan] = eps_overturn(P[notnan], T[notnan], S[notnan], lon, lat, dnoise, alpha_sq, background_eps, use_ip, Nsq_method)
+        eps[notnan], n2[notnan] = eps_overturn(
+            P[notnan],
+            T[notnan],
+            S[notnan],
+            lon,
+            lat,
+            dnoise,
+            alpha_sq,
+            background_eps,
+            use_ip,
+            Nsq_method,
+        )
         return eps, n2
-    
 
 
 def eps_overturn(
-    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan, use_ip=True, Nsq_method='teos', return_diagnostics=False,
+    P,
+    T,
+    S,
+    lon,
+    lat,
+    dnoise=5e-4,
+    alpha_sq=0.9,
+    background_eps=np.nan,
+    use_ip=True,
+    Nsq_method="teos",
+    return_diagnostics=False,
 ):
     """
     Calculate turbulent dissipation based on the Thorpe scale method. This function cannot handle
@@ -130,18 +184,22 @@ def eps_overturn(
     P = np.asarray(P)
     T = np.asarray(T)
     S = np.asarray(S)
-    
+
     if not (P.size == T.size == S.size):
-        raise ValueError('Input array sizes do not match. P.size = {}, T.size = {}, S.size = {}'.format(P.size, T.size, S.size))
-    
+        raise ValueError(
+            "Input array sizes do not match. P.size = {}, T.size = {}, S.size = {}".format(
+                P.size, T.size, S.size
+            )
+        )
+
     ndata = P.size
-    
+
     # Estimate depth from pressure.
     depth = -gsw.z_from_p(P, lat)
 
     SA = gsw.SA_from_SP(S, T, lon, lat)
     CT = gsw.CT_from_t(SA, T, P)
-    
+
     # Initialise diagnostics.
     diag = {}
     diag["eps"] = np.full_like(P, np.nan)
@@ -151,7 +209,7 @@ def eps_overturn(
     diag["dens"] = np.full_like(P, np.nan)
     diag["dens_sorted"] = np.full_like(P, np.nan)
     diag["dens_ip"] = np.full_like(P, np.nan)
-    # Flags are raised if there are problems. 
+    # Flags are raised if there are problems.
     diag["noise_flag"] = np.full_like(P, False, dtype=bool)
     diag["n2_flag"] = np.full_like(P, False, dtype=bool)
     diag["ends_flag"] = np.full_like(P, False, dtype=bool)
@@ -159,26 +217,32 @@ def eps_overturn(
     # Potential density is only meaningful near the reference pressure. For a deep profile
     # we may need to select several reference pressures. To do so, we find the pressure
     # bins that best contain the data
-    pbinwidth = 1000. # In future we could have this as an argument. 
-    pbinmin = np.floor(P.min()/pbinwidth)*pbinwidth
-    pbinmax = np.ceil(P.max()/pbinwidth)*pbinwidth
-    pbins = np.arange(pbinmin, pbinmax+pbinwidth, pbinwidth)
-    p_refs = 0.5*(pbins[1:] + pbins[:-1])  # Use mid point pressure as reference pressure.
+    pbinwidth = 1000.0  # In future we could have this as an argument.
+    pbinmin = np.floor(P.min() / pbinwidth) * pbinwidth
+    pbinmax = np.ceil(P.max() / pbinwidth) * pbinwidth
+    pbins = np.arange(pbinmin, pbinmax + pbinwidth, pbinwidth)
+    p_refs = 0.5 * (
+        pbins[1:] + pbins[:-1]
+    )  # Use mid point pressure as reference pressure.
     nbins = p_refs.size
 
     for idx_bin in range(nbins):
         # Calculate potential density
         dens = gsw.pot_rho_t_exact(SA, T, P, p_ref=p_refs[idx_bin])
 
-        if use_ip: # Create intermediate density profile
-            dens_ip = intermediate_profile(dens, acc=dnoise, hinge=1000, kind="down")  # TODO: make hinge optional
-            Is, patches = find_overturns(dens_ip, combine_gap=0)  # Also, combine gap should be a parameter... 
+        if use_ip:  # Create intermediate density profile
+            dens_ip = intermediate_profile(
+                dens, acc=dnoise, hinge=1000, kind="down"
+            )  # TODO: make hinge optional
+            Is, patches = find_overturns(
+                dens_ip, combine_gap=0
+            )  # Also, combine gap should be a parameter...
         else:
             Is, patches = find_overturns(dens, combine_gap=0)
 
         # Calculate Thorpe displacements
         thorpe_disp = depth[Is] - depth
-        
+
         # Sort temperature and salinity based on the density sorting index
         # for calculating the buoyancy frequency
         SA_sorted = SA[Is]
@@ -197,18 +261,21 @@ def eps_overturn(
             ends_flag = np.full_like(P, False, dtype=bool)
 
             for patch in patches:
-                i0, i1 = patch[0], patch[1] + 1  # This +1 is debatable without a better understanding of _consec_blocks
+                i0, i1 = (
+                    patch[0],
+                    patch[1] + 1,
+                )  # This +1 is debatable without a better understanding of _consec_blocks
                 idx = np.arange(i0, i1 + 1, 1)
-                
+
                 # If beginning, raise flag.
                 if i0 == 0:
                     ends_flag[idx] = True
-                # If end, raise flag. 
+                # If end, raise flag.
                 if i1 == ndata - 1:
                     ends_flag[idx] = True
-                
-                # Shoul check the density difference is greater than 
-                # the noise threshold. Thus should never be the case when using the 
+
+                # Shoul check the density difference is greater than
+                # the noise threshold. Thus should never be the case when using the
                 # intermediate profile method. (Actually sometimes it is and I'm not
                 # sure why, could be the floating point comparison less than?) Anyway,
                 # we force it not to check when using intermediate profile.
@@ -216,14 +283,14 @@ def eps_overturn(
                     ddens = dens_sorted[i1] - dens_sorted[i0]
                     if ddens < dnoise:
                         noise_flag[idx] = True
-                
+
                 # Thorpe scale is the root mean square thorpe displacement.
                 Lto = np.sqrt(np.mean(np.square(thorpe_disp[idx])))
                 Lt[idx] = Lto
-                
+
                 # Buoyancy frequency methods.
-                if Nsq_method == 'teos':
-                    #Go beyond overturn. Need to add 1 for this, unless end or beginning.
+                if Nsq_method == "teos":
+                    # Go beyond overturn. Need to add 1 for this, unless end or beginning.
                     addi = 0 if i1 == ndata - 1 else 1
                     subi = 0 if i0 == 0 else 1
 
@@ -233,33 +300,35 @@ def eps_overturn(
                         P[[i0 - subi, i1 + addi]],
                         lat,
                     )
-                elif Nsq_method == 'bulk':
+                elif Nsq_method == "bulk":
                     g = gsw.grav(lat, P[idx].mean())
                     densanom = dens[idx] - dens_sorted[idx]
-                    densrms = np.sqrt(np.mean(densanom**2))
-                    n2o = g*densrms/(Lto*np.mean(dens[idx]))
-                elif Nsq_method == 'endpt':
+                    densrms = np.sqrt(np.mean(densanom ** 2))
+                    n2o = g * densrms / (Lto * np.mean(dens[idx]))
+                elif Nsq_method == "endpt":
                     g = gsw.grav(lat, P[idx].mean())
                     ddens = dens_sorted[i1] - dens_sorted[i0]
                     ddepth = depth[i1] - depth[i0]
-                    n2o = g*ddens/(ddepth*np.mean(dens[idx]))
+                    n2o = g * ddens / (ddepth * np.mean(dens[idx]))
                 else:
-                    raise ValueError("Nsq_method '{}' is not available.".format(Nsq_method))
-                    
+                    raise ValueError(
+                        "Nsq_method '{}' is not available.".format(Nsq_method)
+                    )
+
                 n2[idx] = n2o
-                
-                if n2o < 0:  # Flag negative N squared. 
+
+                if n2o < 0:  # Flag negative N squared.
                     n2_flag[idx] = True
 
         # Find and select data for this reference pressure range only.
-        inbin = (P > pbins[idx_bin]) & (P < pbins[idx_bin+1])
-        
+        inbin = (P > pbins[idx_bin]) & (P < pbins[idx_bin + 1])
+
         # Fill flags.
         diag["noise_flag"][inbin] = noise_flag[inbin]
         diag["n2_flag"][inbin] = n2_flag[inbin]
-        diag['ends_flag'][inbin] = ends_flag[inbin]
-        
-        # Fill other diagnostics. 
+        diag["ends_flag"][inbin] = ends_flag[inbin]
+
+        # Fill other diagnostics.
         diag["n2"][inbin] = n2[inbin]
         diag["Lt"][inbin] = Lt[inbin]
         diag["thorpe_disp"][inbin] = thorpe_disp[inbin]
@@ -267,16 +336,16 @@ def eps_overturn(
         diag["dens_sorted"][inbin] = dens_sorted[inbin]
         if use_ip:
             diag["dens_ip"][inbin] = dens_ip[inbin]
-            
+
     # Finally calculate epsilon for diagnostics, avoid nans, inf and negative n2.
     isgood = np.isfinite(diag["n2"]) & np.isfinite(diag["Lt"]) & ~diag["n2_flag"]
-    diag['eps'][isgood] = alpha_sq * diag["Lt"][isgood] ** 2 * diag["n2"][isgood] ** 1.5
+    diag["eps"][isgood] = alpha_sq * diag["Lt"][isgood] ** 2 * diag["n2"][isgood] ** 1.5
 
     # Use flags to get rid of bad overturns in basic output
-    isbad = diag["noise_flag"] | diag['n2_flag']
-    eps = diag['eps'].copy()
+    isbad = diag["noise_flag"] | diag["n2_flag"]
+    eps = diag["eps"].copy()
     eps[isbad] = np.nan
-    n2 = diag['n2'].copy()
+    n2 = diag["n2"].copy()
     n2[isbad] = np.nan
 
     # Fill with background epsilon
@@ -286,7 +355,7 @@ def eps_overturn(
         return eps, n2, diag
     else:
         return eps, n2
-    
+
 
 def find_overturns(x, combine_gap=0):
     """Find the indices of unstable patches.
