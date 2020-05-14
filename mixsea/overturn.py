@@ -3,7 +3,7 @@ import numpy as np
 
 
 def nan_eps_overturn(
-    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan, use_ip=True, return_diagnostics=False,
+    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan, use_ip=True, Nsq_method='teos', return_diagnostics=False,
 ):
     """
     Calculate turbulent dissipation based on the Thorpe scale method attempting to deal NaN values in the input data.
@@ -31,6 +31,9 @@ def nan_eps_overturn(
         Sets whether to use the intermediate profile method. Default is True. If True, 
         the dnoise parameter is passed as the `accuracy' argument of the intermediate
         profile method. 
+    Nsq_method : string, optional
+        Method for calculation of buoyancy frequency. Default is 'teos'. Options are 'bulk',
+        'endpt' and 'teos'. 
     return_diagnostics : dict, optional
         Default is False. If True, this function will return a dictionary containing 
         variables such as the Thorpe scale Lt, etc. 
@@ -52,13 +55,13 @@ def nan_eps_overturn(
     isnan = ~notnan
     
     if isnan.sum() == 0:  # If there are no NaNs then return. 
-        return eps_overturn(P, T, S, lon, lat, dnoise, alpha_sq, background_eps, return_diagnostics, use_ip)
+        return eps_overturn(P, T, S, lon, lat, dnoise, alpha_sq, background_eps, use_ip, Nsq_method, return_diagnostics)
     
     eps = np.full_like(P, np.nan)
     n2 = np.full_like(P, np.nan)
     
     if return_diagnostics:
-        eps[notnan], n2[notnan], diag = eps_overturn(P[notnan], T[notnan], S[notnan], lon, lat, dnoise, alpha_sq, background_eps, use_ip, return_diagnostics)
+        eps[notnan], n2[notnan], diag = eps_overturn(P[notnan], T[notnan], S[notnan], lon, lat, dnoise, alpha_sq, background_eps, use_ip, Nsq_method, return_diagnostics)
         
         # Replace nans in diagnostics if the size and shape seems right:
         Nnotnans = notnan.sum()
@@ -71,13 +74,13 @@ def nan_eps_overturn(
         return eps, n2, diag
         
     else:
-        eps[notnan], n2[notnan] = eps_overturn(P[notnan], T[notnan], S[notnan], lon, lat, dnoise, alpha_sq, background_eps, use_ip)
+        eps[notnan], n2[notnan] = eps_overturn(P[notnan], T[notnan], S[notnan], lon, lat, dnoise, alpha_sq, background_eps, use_ip, Nsq_method)
         return eps, n2
     
 
 
 def eps_overturn(
-    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan, use_ip=True, return_diagnostics=False,
+    P, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan, use_ip=True, Nsq_method='teos', return_diagnostics=False,
 ):
     """
     Calculate turbulent dissipation based on the Thorpe scale method. This function cannot handle
@@ -105,7 +108,10 @@ def eps_overturn(
     use_ip : boolean, optional
         Sets whether to use the intermediate profile method. Default is True. If True, 
         the dnoise parameter is passed as the `accuracy' argument of the intermediate
-        profile method. 
+        profile method.
+    Nsq_method : string, optional
+        Method for calculation of buoyancy frequency. Default is 'teos'. Options are 'bulk',
+        'endpt' and 'teos'. 
     return_diagnostics : dict, optional
         Default is False. If True, this function will return a dictionary containing 
         variables such as the Thorpe scale Lt, etc. 
@@ -185,13 +191,13 @@ def eps_overturn(
             # Loop over detected overturns and calculate Thorpe Scales, N2
             # and dT/dz over the overturn region
             Lt = np.full_like(P, np.nan)
-            N2 = np.full_like(P, np.nan)
+            n2 = np.full_like(P, np.nan)
             noise_flag = np.full_like(P, False, dtype=bool)
             n2_flag = np.full_like(P, False, dtype=bool)
             ends_flag = np.full_like(P, False, dtype=bool)
 
             for patch in patches:
-                i0, i1 = patch[0], patch[1] + 1
+                i0, i1 = patch[0], patch[1] + 1  # This +1 is debatable without a better understanding of _consec_blocks
                 idx = np.arange(i0, i1 + 1, 1)
                 
                 # If beginning, raise flag.
@@ -201,35 +207,46 @@ def eps_overturn(
                 if i1 == ndata - 1:
                     ends_flag[idx] = True
                 
-                # If we are not using the intermediate profile method, need to check the density difference is greater than 
-                # the noise threshold.
-                if ~use_ip:
-                    dens_diff = dens_sorted[i1] - dens_sorted[i0]
-                    if dens_diff < dnoise:
+                # Shoul check the density difference is greater than 
+                # the noise threshold. Thus should never be the case when using the 
+                # intermediate profile method. (Actually sometimes it is and I'm not
+                # sure why, could be the floating point comparison less than?) Anyway,
+                # we force it not to check when using intermediate profile.
+                if not use_ip:
+                    ddens = dens_sorted[i1] - dens_sorted[i0]
+                    if ddens < dnoise:
                         noise_flag[idx] = True
                 
-                # Thorpe scale is the root mean square thorpe displacement. 
-                Lt[idx] = np.sqrt(np.mean(np.square(thorpe_disp[idx])))
+                # Thorpe scale is the root mean square thorpe displacement.
+                Lto = np.sqrt(np.mean(np.square(thorpe_disp[idx])))
+                Lt[idx] = Lto
                 
-                # Buoyancy frequency calculated over the overturn from sorted
-                # profiles. Go beyond overturn. Need to add 2 for this, unless end.
-                if i1 == ndata - 1:
-                    addi = 0
+                # Buoyancy frequency methods.
+                if Nsq_method == 'teos':
+                    #Go beyond overturn. Need to add 1 for this, unless end or beginning.
+                    addi = 0 if i1 == ndata - 1 else 1
+                    subi = 0 if i0 == 0 else 1
+
+                    n2o, _ = gsw.Nsquared(
+                        SA_sorted[[i0 - subi, i1 + addi]],
+                        CT_sorted[[i0 - subi, i1 + addi]],
+                        P[[i0 - subi, i1 + addi]],
+                        lat,
+                    )
+                elif Nsq_method == 'bulk':
+                    g = gsw.grav(lat, P[idx].mean())
+                    densanom = dens[idx] - dens_sorted[idx]
+                    densrms = np.sqrt(np.mean(densanom**2))
+                    n2o = g*densrms/(Lto*np.mean(dens[idx]))
+                elif Nsq_method == 'endpt':
+                    g = gsw.grav(lat, P[idx].mean())
+                    ddens = dens_sorted[i1] - dens_sorted[i0]
+                    ddepth = depth[i1] - depth[i0]
+                    n2o = g*ddens/(ddepth*np.mean(dens[idx]))
                 else:
-                    addi = 1
+                    raise ValueError("Nsq_method '{}' is not available.".format(Nsq_method))
                     
-                if i0 == 0:
-                    subi = 0
-                else:
-                    subi = 1
-                    
-                n2o, _ = gsw.Nsquared(
-                    SA_sorted[[i0 - subi, i1 + addi]],
-                    CT_sorted[[i0 - subi, i1 + addi]],
-                    P[[i0 - subi, i1 + addi]],
-                    lat,
-                )
-                N2[idx] = n2o
+                n2[idx] = n2o
                 
                 if n2o < 0:  # Flag negative N squared. 
                     n2_flag[idx] = True
@@ -243,7 +260,7 @@ def eps_overturn(
         diag['ends_flag'][inbin] = ends_flag[inbin]
         
         # Fill other diagnostics. 
-        diag["n2"][inbin] = N2[inbin]
+        diag["n2"][inbin] = n2[inbin]
         diag["Lt"][inbin] = Lt[inbin]
         diag["thorpe_disp"][inbin] = thorpe_disp[inbin]
         diag["dens"][inbin] = dens[inbin]
