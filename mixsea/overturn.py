@@ -141,6 +141,7 @@ def eps_overturn(
     diag["eps"] = np.full_like(P, np.nan)
     diag["n2"] = np.full_like(P, np.nan)
     diag["Lt"] = np.full_like(P, np.nan)
+    diag["thorpe_disp"] = np.full_like(P, np.nan)
     diag["dens"] = np.full_like(P, np.nan)
     diag["dens_sorted"] = np.full_like(P, np.nan)
     diag["dens_ip"] = np.full_like(P, np.nan)
@@ -165,12 +166,12 @@ def eps_overturn(
 
         if use_ip: # Create intermediate density profile
             dens_ip = intermediate_profile(dens, acc=dnoise, hinge=1000, kind="down")  # TODO: make hinge optional
-            Is, patches = find_overturns(dens_ip)
+            Is, patches = find_overturns(dens_ip, combine_gap=0)  # Also, combine gap should be a parameter... 
         else:
-            Is, patches = find_overturns(dens)
+            Is, patches = find_overturns(dens, combine_gap=0)
 
         # Calculate Thorpe displacements
-        thorpe_displacement = depth[Is] - depth
+        thorpe_disp = depth[Is] - depth
         
         # Sort temperature and salinity based on the density sorting index
         # for calculating the buoyancy frequency
@@ -208,7 +209,7 @@ def eps_overturn(
                         noise_flag[idx] = True
                 
                 # Thorpe scale is the root mean square thorpe displacement. 
-                Lt[idx] = np.sqrt(np.mean(np.square(thorpe_displacement[idx])))
+                Lt[idx] = np.sqrt(np.mean(np.square(thorpe_disp[idx])))
                 
                 # Buoyancy frequency calculated over the overturn from sorted
                 # profiles. Go beyond overturn. Need to add 2 for this, unless end.
@@ -244,6 +245,7 @@ def eps_overturn(
         # Fill other diagnostics. 
         diag["n2"][inbin] = N2[inbin]
         diag["Lt"][inbin] = Lt[inbin]
+        diag["thorpe_disp"][inbin] = thorpe_disp[inbin]
         diag["dens"][inbin] = dens[inbin]
         diag["dens_sorted"][inbin] = dens_sorted[inbin]
         if use_ip:
@@ -254,7 +256,7 @@ def eps_overturn(
     diag['eps'][isgood] = alpha_sq * diag["Lt"][isgood] ** 2 * diag["n2"][isgood] ** 1.5
 
     # Use flags to get rid of bad overturns in basic output
-    isbad = diag["noise_flag"] | diag['n2_flag'] | diag['ends_flag']
+    isbad = diag["noise_flag"] | diag['n2_flag']
     eps = diag['eps'].copy()
     eps[isbad] = np.nan
     n2 = diag['n2'].copy()
@@ -269,7 +271,7 @@ def eps_overturn(
         return eps, n2
     
 
-def find_overturns(x):
+def find_overturns(x, combine_gap=0):
     """Find the indices of unstable patches.
 
     Parameters
@@ -277,6 +279,9 @@ def find_overturns(x):
     x : array_like 1D
         Profile of some quantity from which overturns can be detected 
         e.g. temperature or density.
+    combine_gap : float, optional
+        Combine overturns that are separated by less than a given number of points.
+        Default is 0. 
 
     Returns
     -------
@@ -289,7 +294,7 @@ def find_overturns(x):
     idx = np.arange(x.size, dtype=int)
     idx_sorted = np.argsort(x, kind="mergesort")
     idx_cumulative = np.cumsum(idx_sorted - idx)
-    idx_patches = _consec_blocks(np.where(idx_cumulative > 2)[0], combine_gap=1)
+    idx_patches = _consec_blocks(np.where(idx_cumulative > 0)[0], combine_gap)
     return idx_sorted, idx_patches
 
 
