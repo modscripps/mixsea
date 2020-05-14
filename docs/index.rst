@@ -20,6 +20,7 @@ Contents
    installation
    usage
    tutorialnb
+   thorpe_detailed_look
    intermediate_profile_example
    api
    contributing
