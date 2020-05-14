@@ -2,18 +2,26 @@ import gsw
 import numpy as np
 
 
-def eps_overturn(
-    P, Z, T, S, lon, lat, dnoise=5e-4, alpha_sq=0.9, background_eps=np.nan,
+def nan_eps_overturn(
+    P,
+    T,
+    S,
+    lon,
+    lat,
+    dnoise=5e-4,
+    alpha_sq=0.9,
+    background_eps=np.nan,
+    use_ip=True,
+    Nsq_method="teos",
+    return_diagnostics=False,
 ):
     """
-    Calculate turbulent dissipation based on the Thorpe scale method.
+    Calculate turbulent dissipation based on the Thorpe scale method attempting to deal NaN values in the input data.
 
     Parameters
     ----------
     P : array-like
         Pressure [dbar]
-    Z : array-like
-        Depth [m]
     T : array-like
         In-situ temperature [ITS90, °C]
     S : array-like
@@ -22,164 +30,358 @@ def eps_overturn(
         Longitude of observation
     lat : float
         Latitude of observation
-    dnoise : float
-        Noise level of density [kg/m^3] (default 5e-4)
-    alpha_sq : float
+    dnoise : float, optional
+        Noise level of density [kg/m^3]. Default is 5e-4.
+    alpha_sq : float, optional
         Square of proportionality constant between Thorpe and Ozmidov scale.
-        (default 0.9)
-    background_eps : float
-        Background epsilon where no overturn detected. Defaults to np.nan.
+        Default is 0.9.
+    background_eps : float, optional
+        Background epsilon where no overturn detected. Defaults to numpy.nan.
+    use_ip : boolean, optional
+        Sets whether to use the intermediate profile method. Default is True. If True, 
+        the dnoise parameter is passed as the `accuracy' argument of the intermediate
+        profile method. 
+    Nsq_method : string, optional
+        Method for calculation of buoyancy frequency. Default is 'teos'. Options are 'bulk',
+        'endpt' and 'teos'. 
+    return_diagnostics : dict, optional
+        Default is False. If True, this function will return a dictionary containing 
+        variables such as the Thorpe scale Lt, etc. 
 
     Returns
     -------
-    Lt : array-like
-      Thorpe length scale [m]
     eps : array-like
-      Turbulent dissipation [W/kg]
-    k : array-like
-      Turbulent diffusivity [m^2/s]
+        Turbulent dissipation [W/kg]
     n2 : array-like
-      Background stratification of each overturn detected [s^-2]
-    dtdz : array-like
-      Temperature gradient of each overturn [°/m]
+        Background stratification of each overturn detected [s^-2]
+    diag : dict, optional
+        Dictionary of diagnositc variables, set return with the `return_diagnostics' argument. 
+
 
     """
-    # average lon, lat into one value if they are vectors
-    lon = np.nanmean(lon)
-    lat = np.nanmean(lat)
 
-    # avoid error due to nan's in conditional statements
-    # np.seterr(invalid="ignore")
+    # Find non-NaNs
+    notnan = np.isfinite(P) & np.isfinite(T) & np.isfinite(S)
+    isnan = ~notnan
 
-    z0 = Z.copy()
-    z0 = z0.astype("float")
+    if isnan.sum() == 0:  # If there are no NaNs then return.
+        return eps_overturn(
+            P,
+            T,
+            S,
+            lon,
+            lat,
+            dnoise,
+            alpha_sq,
+            background_eps,
+            use_ip,
+            Nsq_method,
+            return_diagnostics,
+        )
 
-    # populate output dict
-    out = {}
-    out["Lt"] = np.zeros_like(z0) * np.nan
-    out["eps"] = np.zeros_like(z0) * np.nan
-    out["k"] = np.zeros_like(z0) * np.nan
-    out["n2"] = np.zeros_like(z0) * np.nan
-    out["dtdz"] = np.zeros_like(z0) * np.nan
+    eps = np.full_like(P, np.nan)
+    n2 = np.full_like(P, np.nan)
 
-    # We need to calculate potential density and temperature at reference depths
-    # If the profile is shallower than 1200 m, use only one depth range.
-    # Otherwise, use several depth reference levels.
-    if (np.nanmax(P) - np.nanmin(P)) > 1200:
-        dref = 1000
-        refd = np.arange(np.nanmin(P) + dref / 2, np.nanmax(P), dref)
+    if return_diagnostics:
+        eps[notnan], n2[notnan], diag = eps_overturn(
+            P[notnan],
+            T[notnan],
+            S[notnan],
+            lon,
+            lat,
+            dnoise,
+            alpha_sq,
+            background_eps,
+            use_ip,
+            Nsq_method,
+            return_diagnostics,
+        )
+
+        # Replace nans in diagnostics if the size and shape seems right:
+        Nnotnans = notnan.sum()
+        for key in diag:
+            if (np.size(diag[key]) == Nnotnans) & (np.ndim(diag[key]) == 1):
+                ar = np.full_like(P, np.nan)
+                ar[notnan] = diag[key]
+                diag[key] = ar  # This will wipe out the old item.
+
+        return eps, n2, diag
+
     else:
-        refd = (np.nanmin(P) + np.nanmax(P)) / 2
-        dref = (np.nanmax(P) - np.nanmin(P)) + 1
+        eps[notnan], n2[notnan] = eps_overturn(
+            P[notnan],
+            T[notnan],
+            S[notnan],
+            lon,
+            lat,
+            dnoise,
+            alpha_sq,
+            background_eps,
+            use_ip,
+            Nsq_method,
+        )
+        return eps, n2
 
-    for refdi in refd:
-        # Find non-NaNs
-        x = np.squeeze(np.where(np.isfinite(T + S + P)))
 
-        # Extract variables without the NaNs
-        p = P[x].copy()
-        z = Z[x].copy()
-        z = z.astype("float")
-        t = T[x].copy()
-        s = S[x].copy()
-        # cn2   = ctdn['n2'][x].copy()
+def eps_overturn(
+    P,
+    T,
+    S,
+    lon,
+    lat,
+    dnoise=5e-4,
+    alpha_sq=0.9,
+    background_eps=np.nan,
+    use_ip=True,
+    Nsq_method="teos",
+    return_diagnostics=False,
+):
+    """
+    Calculate turbulent dissipation based on the Thorpe scale method. This function cannot handle
+    NaNs in the input data, but there is another called `nan_eps_overturn' that attempts to.
 
-        SA = gsw.SA_from_SP(s, t, lon, lat)
-        CT = gsw.CT_from_t(SA, t, p)
-        # PT = gsw.pt0_from_t(SA, t, p)
+    Parameters
+    ----------
+    P : array-like
+        Pressure [dbar]
+    T : array-like
+        In-situ temperature [ITS90, °C]
+    S : array-like
+        Salinity [PSU]
+    lon : float
+        Longitude of observation
+    lat : float
+        Latitude of observation
+    dnoise : float, optional
+        Noise level of density [kg/m^3]. Default is 5e-4.
+    alpha_sq : float, optional
+        Square of proportionality constant between Thorpe and Ozmidov scale.
+        Default is 0.9.
+    background_eps : float, optional
+        Background epsilon where no overturn detected. Defaults to numpy.nan.
+    use_ip : boolean, optional
+        Sets whether to use the intermediate profile method. Default is True. If True, 
+        the dnoise parameter is passed as the `accuracy' argument of the intermediate
+        profile method.
+    Nsq_method : string, optional
+        Method for calculation of buoyancy frequency. Default is 'teos'. Options are 'bulk',
+        'endpt' and 'teos'. 
+    return_diagnostics : dict, optional
+        Default is False. If True, this function will return a dictionary containing 
+        variables such as the Thorpe scale Lt, etc. 
 
+    Returns
+    -------
+    eps : array-like
+        Turbulent dissipation [W/kg]
+    n2 : array-like
+        Background stratification of each overturn detected [s^-2]
+    diag : dict, optional
+        Dictionary of diagnositc variables, set return with the `return_diagnostics' argument. 
+
+
+    """
+    P = np.asarray(P)
+    T = np.asarray(T)
+    S = np.asarray(S)
+
+    if not (P.size == T.size == S.size):
+        raise ValueError(
+            "Input array sizes do not match. P.size = {}, T.size = {}, S.size = {}".format(
+                P.size, T.size, S.size
+            )
+        )
+
+    ndata = P.size
+
+    # Estimate depth from pressure.
+    depth = -gsw.z_from_p(P, lat)
+
+    SA = gsw.SA_from_SP(S, T, lon, lat)
+    CT = gsw.CT_from_t(SA, T, P)
+
+    # Initialise diagnostics.
+    diag = {}
+    diag["eps"] = np.full_like(P, np.nan)
+    diag["n2"] = np.full_like(P, np.nan)
+    diag["Lt"] = np.full_like(P, np.nan)
+    diag["thorpe_disp"] = np.full_like(P, np.nan)
+    diag["dens"] = np.full_like(P, np.nan)
+    diag["dens_sorted"] = np.full_like(P, np.nan)
+    diag["dens_ip"] = np.full_like(P, np.nan)
+    # Flags are raised if there are problems.
+    diag["noise_flag"] = np.full_like(P, False, dtype=bool)
+    diag["n2_flag"] = np.full_like(P, False, dtype=bool)
+    diag["ends_flag"] = np.full_like(P, False, dtype=bool)
+
+    # Potential density is only meaningful near the reference pressure. For a deep profile
+    # we may need to select several reference pressures. To do so, we find the pressure
+    # bins that best contain the data
+    pbinwidth = 1000.0  # In future we could have this as an argument.
+    pbinmin = np.floor(P.min() / pbinwidth) * pbinwidth
+    pbinmax = np.ceil(P.max() / pbinwidth) * pbinwidth
+    pbins = np.arange(pbinmin, pbinmax + pbinwidth, pbinwidth)
+    p_refs = 0.5 * (
+        pbins[1:] + pbins[:-1]
+    )  # Use mid point pressure as reference pressure.
+    nbins = p_refs.size
+
+    for idx_bin in range(nbins):
         # Calculate potential density
-        sg = gsw.pot_rho_t_exact(SA, t, p, p_ref=refdi)
+        dens = gsw.pot_rho_t_exact(SA, T, P, p_ref=p_refs[idx_bin])
 
-        # Create intermediate density profile
-        sgi = intermediate_profile(sg, acc=dnoise, hinge=sg[0], kind="down")
+        if use_ip:  # Create intermediate density profile
+            dens_ip = intermediate_profile(
+                dens, acc=dnoise, hinge=1000, kind="down"
+            )  # TODO: make hinge optional
+            Is, patches = find_overturns(
+                dens_ip, combine_gap=0
+            )  # Also, combine gap should be a parameter...
+        else:
+            Is, patches = find_overturns(dens, combine_gap=0)
 
-        # Sort (important to use mergesort here)
-        # Ds = np.sort(sgi, kind="mergesort")
-        Is = np.argsort(sgi, kind="mergesort")
+        # Calculate Thorpe displacements
+        thorpe_disp = depth[Is] - depth
 
-        # Sort temperature profile as well for calculation of dT/dz
-        # Thetas = np.sort(PT, kind='mergesort')
-        # ThIs = np.argsort(PT, kind='mergesort')
+        # Sort temperature and salinity based on the density sorting index
+        # for calculating the buoyancy frequency
+        SA_sorted = SA[Is]
+        CT_sorted = CT[Is]
+        dens_sorted = dens[Is]
 
-        # Calculate Thorpe length scale
-        TH = z[Is] - z
-        cumTH = np.cumsum(TH)
-
-        # make sure there are any overturns
-        if np.sum(cumTH) > 2:
-
-            aa = np.where(cumTH > 2)[0]
-            blocks = _consec_blocks(aa, combine_gap=1)
-
-            # Sort temperature and salinity based on the density sorting index
-            # for calculating the buoyancy frequency
-            # PTs = PT[Is]
-            SAs = SA[Is]
-            CTs = CT[Is]
+        # Make sure there are any overturns.
+        if np.any(patches):
 
             # Loop over detected overturns and calculate Thorpe Scales, N2
             # and dT/dz over the overturn region
-            THsc = np.zeros_like(z) * np.nan
-            N2 = np.zeros_like(z) * np.nan
-            # CN2  = np.ones_like(z)*np.nan
-            DTDZ = np.zeros_like(z) * np.nan
+            Lt = np.full_like(P, np.nan)
+            n2 = np.full_like(P, np.nan)
+            noise_flag = np.full_like(P, False, dtype=bool)
+            n2_flag = np.full_like(P, False, dtype=bool)
+            ends_flag = np.full_like(P, False, dtype=bool)
 
-            for iostart, ioend in zip(blocks[:, 0], blocks[:, 1]):
-                idx = np.arange(iostart, ioend + 1, 1)
-                sc = np.sqrt(np.mean(np.square(TH[idx])))
-                # ctdn2 = np.nanmean(cn2[idx])
-                # Buoyancy frequency calculated over the overturn from sorted
-                # profiles. Go beyond overturn.
-                n2, Np = gsw.Nsquared(
-                    SAs[[iostart - 1, ioend + 1]],
-                    CTs[[iostart - 1, ioend + 1]],
-                    p[[iostart - 1, ioend + 1]],
-                    lat,
-                )
-                # Fill depth range of the overturn with the Thorpe scale
-                THsc[idx] = sc
-                # Fill depth range of the overturn with N^2
-                N2[idx] = n2
+            for patch in patches:
+                i0, i1 = (
+                    patch[0],
+                    patch[1] + 1,
+                )  # This +1 is debatable without a better understanding of _consec_blocks
+                idx = np.arange(i0, i1 + 1, 1)
 
-                # Fill depth range of the overturn with local temperature gradient
-                if iostart > 0:
-                    PTov = CTs[iostart - 1 : ioend + 1]
-                    zov = z[iostart - 1 : ioend + 1]
+                # If beginning, raise flag.
+                if i0 == 0:
+                    ends_flag[idx] = True
+                # If end, raise flag.
+                if i1 == ndata - 1:
+                    ends_flag[idx] = True
+
+                # Shoul check the density difference is greater than
+                # the noise threshold. Thus should never be the case when using the
+                # intermediate profile method. (Actually sometimes it is and I'm not
+                # sure why, could be the floating point comparison less than?) Anyway,
+                # we force it not to check when using intermediate profile.
+                if not use_ip:
+                    ddens = dens_sorted[i1] - dens_sorted[i0]
+                    if ddens < dnoise:
+                        noise_flag[idx] = True
+
+                # Thorpe scale is the root mean square thorpe displacement.
+                Lto = np.sqrt(np.mean(np.square(thorpe_disp[idx])))
+                Lt[idx] = Lto
+
+                # Buoyancy frequency methods.
+                if Nsq_method == "teos":
+                    # Go beyond overturn. Need to add 1 for this, unless end or beginning.
+                    addi = 0 if i1 == ndata - 1 else 1
+                    subi = 0 if i0 == 0 else 1
+
+                    n2o, _ = gsw.Nsquared(
+                        SA_sorted[[i0 - subi, i1 + addi]],
+                        CT_sorted[[i0 - subi, i1 + addi]],
+                        P[[i0 - subi, i1 + addi]],
+                        lat,
+                    )
+                elif Nsq_method == "bulk":
+                    g = gsw.grav(lat, P[idx].mean())
+                    densanom = dens[idx] - dens_sorted[idx]
+                    densrms = np.sqrt(np.mean(densanom ** 2))
+                    n2o = g * densrms / (Lto * np.mean(dens[idx]))
+                elif Nsq_method == "endpt":
+                    g = gsw.grav(lat, P[idx].mean())
+                    ddens = dens_sorted[i1] - dens_sorted[i0]
+                    ddepth = depth[i1] - depth[i0]
+                    n2o = g * ddens / (ddepth * np.mean(dens[idx]))
                 else:
-                    PTov = CTs[iostart : ioend + 1]
-                    zov = z[iostart : ioend + 1]
-                local_dtdz = (np.min(PTov) - np.max(PTov)) / (np.max(zov) - np.min(zov))
-                DTDZ[idx] = local_dtdz
+                    raise ValueError(
+                        "Nsq_method '{}' is not available.".format(Nsq_method)
+                    )
 
-            # Find data for this reference depth range
-            iz = np.squeeze(
-                np.where(((p > refdi - dref / 2) & (p <= refdi + dref / 2)))
-            )
-            # There shouldn't be any negative N^2 the way we calculate it -
-            # but only over the current depth range!
-            # Also, exclude any nan's to avoid warnings.
-            ni = np.where(~np.isnan(N2[iz]))[0]
-            assert np.all(N2[iz[ni]] > 0)
-            # Calculate epsilon
-            THepsilon = np.zeros_like(N2) * np.nan
-            THepsilon[iz[ni]] = alpha_sq * THsc[iz[ni]] ** 2 * np.sqrt(N2[iz[ni]]) ** 3
-            # THepsilon[N2 <= 0] = np.nan
-            THk = np.zeros_like(N2) * np.nan
-            THk[iz[ni]] = 0.2 * THepsilon[iz[ni]] / N2[iz[ni]]
+                n2[idx] = n2o
 
-            # Pick only data for this reference depth range
-            out["eps"][x[iz]] = THepsilon[iz]
-            out["k"][x[iz]] = THk[iz]
-            out["n2"][x[iz]] = N2[iz]
-            out["Lt"][x[iz]] = THsc[iz]
-            out["dtdz"][x[iz]] = DTDZ[iz]
+                if n2o < 0:  # Flag negative N squared.
+                    n2_flag[idx] = True
 
-        # Fill with background epsilon
-        ni = np.where(np.isnan(out["eps"][x]))
-        out["eps"][x[ni]] = background_eps
+        # Find and select data for this reference pressure range only.
+        inbin = (P > pbins[idx_bin]) & (P < pbins[idx_bin + 1])
 
-    return out["Lt"], out["eps"], out["k"], out["n2"], out["dtdz"]
+        # Fill flags.
+        diag["noise_flag"][inbin] = noise_flag[inbin]
+        diag["n2_flag"][inbin] = n2_flag[inbin]
+        diag["ends_flag"][inbin] = ends_flag[inbin]
+
+        # Fill other diagnostics.
+        diag["n2"][inbin] = n2[inbin]
+        diag["Lt"][inbin] = Lt[inbin]
+        diag["thorpe_disp"][inbin] = thorpe_disp[inbin]
+        diag["dens"][inbin] = dens[inbin]
+        diag["dens_sorted"][inbin] = dens_sorted[inbin]
+        if use_ip:
+            diag["dens_ip"][inbin] = dens_ip[inbin]
+
+    # Finally calculate epsilon for diagnostics, avoid nans, inf and negative n2.
+    isgood = np.isfinite(diag["n2"]) & np.isfinite(diag["Lt"]) & ~diag["n2_flag"]
+    diag["eps"][isgood] = alpha_sq * diag["Lt"][isgood] ** 2 * diag["n2"][isgood] ** 1.5
+
+    # Use flags to get rid of bad overturns in basic output
+    isbad = diag["noise_flag"] | diag["n2_flag"]
+    eps = diag["eps"].copy()
+    eps[isbad] = np.nan
+    n2 = diag["n2"].copy()
+    n2[isbad] = np.nan
+
+    # Fill with background epsilon
+    eps[np.isnan(eps)] = background_eps
+
+    if return_diagnostics:
+        return eps, n2, diag
+    else:
+        return eps, n2
+
+
+def find_overturns(x, combine_gap=0):
+    """Find the indices of unstable patches.
+
+    Parameters
+    ----------
+    x : array_like 1D
+        Profile of some quantity from which overturns can be detected 
+        e.g. temperature or density.
+    combine_gap : float, optional
+        Combine overturns that are separated by less than a given number of points.
+        Default is 0. 
+
+    Returns
+    -------
+    idx_sorted : 1D numpy array
+        Indices that sort the data x.
+    idx_patches : (N, 2) numpy array
+        Start and end indices of the overturns. 
+
+    """
+    idx = np.arange(x.size, dtype=int)
+    idx_sorted = np.argsort(x, kind="mergesort")
+    idx_cumulative = np.cumsum(idx_sorted - idx)
+    idx_patches = _consec_blocks(np.where(idx_cumulative > 0)[0], combine_gap)
+    return idx_sorted, idx_patches
 
 
 def intermediate_profile_topdown(x, acc, hinge):
