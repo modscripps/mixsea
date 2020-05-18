@@ -24,6 +24,8 @@ Shear/strain-based parameterization
 
     shearstrain.shearstrain
     shearstrain.compute_shearstrain_krho
+    shearstrain.wavenumber_vector
+    shearstrain.latitude_correction
 
 Other functions
 ===============
