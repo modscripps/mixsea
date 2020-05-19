@@ -139,12 +139,10 @@ def nsqfcn(s, t, p, p0, dp, lon, lat):
     return n2, pout
 
 
-def adiabatic_level_gsw(
-    P, S, T, lon, lat, bin_width=100.0, order=1, ret_coefs=False, cap=None
+def adiabatic_leveling(
+    P, S, T, lon, lat, bin_width=100.0, order=1, return_diagnostics=False, cap=None,
 ):
-    """Generate smooth buoyancy frequency profile by applying the adiabatic
-    levelling method of Bray and Fofonoff (1981). This function uses the newest
-    theormodynamic toolbox, 'gsw'.
+    """Generate smooth buoyancy frequency profile by adiabatic leveling.
 
     Parameters
     ----------
@@ -161,10 +159,10 @@ def adiabatic_level_gsw(
     bin_width : float, optional
         Pressure bin width [dbar]
     order : int, optional
-        Degree of polynomial fit. (DEGREES HIGHER THAN 1 NOT PROPERLY TESTED)
-    ret_coefs : bool, optional
+        Degree of polynomial fit.
+    return_diagnostics : bool, optional
         Flag to return additional argument pcoefs. False by default.
-    cap : optional
+    cap : {None, 'left', 'right', 'both'}, optional
         Flag to change proceedure at ends of array where bins may be partially
         filled. None by default, meaning they are included. Can also specify
         'left', 'right' or 'both' to cap method before partial bins.
@@ -174,8 +172,12 @@ def adiabatic_level_gsw(
     N2_ref : 1-D ndarray
         Reference buoyancy frequency [s-2]
     pcoefs : 2-D ndarray
-        Fitting coefficients, returned only when the flag ret_coefs is set
+        Fitting coefficients, returned only when the flag return_diagnostics is set
         True.
+
+    Notes
+    -----
+    Based on method of Bray and Fofonoff (1981) :cite:`Bray1981`.
 
     """
     valid = np.isfinite(P) & np.isfinite(S) & np.isfinite(T)
@@ -268,7 +270,7 @@ def adiabatic_level_gsw(
         N2_ref[valid] = N2
         pcoef[:, valid] = p
 
-    if ret_coefs:
+    if return_diagnostics:
         return N2_ref, pcoef
     else:
         return N2_ref

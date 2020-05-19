@@ -2,7 +2,177 @@ import gsw
 import numpy as np
 from scipy.interpolate import interp1d
 
-from . import helpers
+from . import helpers, nsq
+
+
+def wavenumber_vector(w):
+    r"""
+    Generate wavenumber vector
+
+    Wavenumber vector runs from
+    :math:`\frac{2 \pi}{\textrm{w}}` to
+    :math:`\frac{2 \pi}{10}` in increments of
+    :math:`\frac{2 \pi}{\textrm{w}}`.
+
+    Parameters
+    ----------
+    w : float
+        window size [m]
+
+    Returns
+    -------
+    m : array
+        Wavenumber vector
+    """
+    return np.arange(2 * np.pi / w, 2 * np.pi / 10, 2 * np.pi / w)
+
+
+def strain_polynomial_fits(s, t, p, z, lon, lat, zbin, dz):
+    """
+    Calculate strain with a smooth N^2 profile from polynomial fits to windowed data.
+
+    Parameters
+    ----------
+    s : array-like
+        CTD salinity [psu]
+    t : array-like
+        CTD in-situ temperature [ITS-90, degrees C]
+    p : array-like
+        CTD pressure [dbar]
+    z : array-like
+        CTD depth [m]
+    lat : array-like or float
+        Latitude
+    lon : array-like or float
+        Longitude
+    zbin : float
+        Window centers
+    dz : float
+        Window size
+
+    Returns
+    -------
+    strain : array-like
+        Strain profile.
+    z_st : array-like
+        Depth vector for `strain`.
+    N2ref : array-like
+        Smooth N^2 profile.
+    """
+    SA = gsw.SA_from_SP(s, p, lon, lat)
+    CT = gsw.CT_from_t(SA, t, p)
+    N2, Pbar = gsw.Nsquared(SA, CT, p, lat=lat)
+    Zbar = -1 * gsw.z_from_p(Pbar, lat)
+    isN = np.isfinite(N2)
+    n2polyfit = np.zeros(N2.shape) * np.nan
+    n2polyfit_mean = n2polyfit.copy()
+    # zbin gives center of windows. We want to do the fit over the whole
+    # window size but not fill the whole window, just to the overlap. Wait a
+    # minute, that doesn't sound right. We want to calculate spectra over the
+    # whole window! Is it ok to have discontinuities in strain? I will keep
+    # this as it is for now...
+    for iwin, zw in enumerate(zbin):
+        ij = (Zbar >= (zw - dz)) & (Zbar < (zw + dz))
+        ij2 = (Zbar >= (zw - dz / 2)) & (Zbar < (zw + dz / 2))
+        ij = ij * isN
+        p = np.polyfit(Zbar[ij], N2[ij], deg=2)
+        pv = np.polyval(p, Zbar[ij2])
+        n2polyfit_mean[ij2] = np.mean(pv)
+        n2polyfit[ij2] = pv
+    # Extraplolate over NaN's at the bottom
+    n2polyfit_mean = helpers.extrapolate_data(n2polyfit_mean)
+    n2polyfit = helpers.extrapolate_data(n2polyfit)
+    # Calculate strain
+    strain = (N2 - n2polyfit) / n2polyfit_mean
+    z_st = z[:-1] + np.diff(z[:2] / 2)
+    N2ref = n2polyfit_mean
+    return strain, z_st, N2ref
+
+
+def strain_adiabatic_leveling(s, t, p, z, lon, lat, bin_width):
+    """
+    Calculate strain with a smooth N^2 profile based on the adiabatic leveling method.
+
+    Parameters
+    ----------
+    s : array-like
+        CTD salinity [psu]
+    t : array-like
+        CTD in-situ temperature [ITS-90, degrees C]
+    p : array-like
+        CTD pressure [dbar]
+    z : array-like
+        CTD depth [m]
+    lat : array-like or float
+        Latitude
+    lon : array-like or float
+        Longitude
+
+    Returns
+    -------
+    strain : array-like
+        Strain profile.
+    z_st : array-like
+        Depth vector for `strain`.
+    N2ref : array-like
+        Smooth N^2 profile.
+    """
+    N2ref = nsq.adiabatic_leveling(
+        p,
+        s,
+        t,
+        lon,
+        lat,
+        bin_width=bin_width,
+        order=2,
+        return_diagnostics=False,
+        cap="both",
+    )
+    # N2ref = interp1d(z, N2ref)()
+    SA = gsw.SA_from_SP(s, p, lon, lat)
+    CT = gsw.CT_from_t(SA, t, p)
+    N2, Pbar = gsw.Nsquared(SA, CT, p, lat=lat)
+    # Zbar = -1 * gsw.z_from_p(Pbar, lat)
+    N2ref = interp1d(p, N2ref)(Pbar)
+    strain = strain = (N2 - N2ref) / N2ref
+    z_st = z[:-1] + np.diff(z[:2] / 2)
+    return strain, z_st, N2ref
+
+
+def latitude_correction(f, N):
+    r"""
+    Latitudinal correction term
+
+    Parameters
+    ----------
+    f : float
+        Coriolis parameter
+    N : float
+        Buoyancy frequency
+
+    Returns
+    -------
+    L : float
+        Latitudinal correction
+
+    Notes
+    -----
+    Calculates the latitudinal dependence term as described in Gregg et al.
+    (2003) :cite:`Gregg2003`:
+
+    .. math::
+
+        L(\theta, N) = \frac{f \cosh^{-1}(N/f)}{f_{30^{\circ}} \cosh^{-1}(N_0/f_{30^\circ})}
+
+    with Coriolis parameter at 30° latitude :math:`f_{30^\circ}` and reference
+    GM buoyancy frequency :math:`N_0=5.24\times10^{-3}\,\mathrm{s}^{-1}`.
+    """
+    # Coriolis parameter at 30 degrees latitude
+    f30 = gsw.f(30)  # rad s-1
+    # GM model reference stratification:
+    N0 = 5.24e-3  # rad s-1
+    f = np.abs(f)
+    return f * np.arccosh(N / f) / (f30 * np.arccosh(N0 / f30))
 
 
 def shearstrain(
@@ -20,6 +190,8 @@ def shearstrain(
     m_include_sh=None,
     m_include_st=None,
     ladcp_is_shear=False,
+    smooth="AL",
+    return_diagnostics=False,
 ):
     """
     Compute krho and epsilon from CTD/LADCP data via the shear/strain parameterization.
@@ -59,37 +231,55 @@ def shearstrain(
     ladcp_is_shear : bool, optional
         Indicate whether LADCP data is velocity or shear.
         Defaults to False (velocity).
+    smooth : {'AL', 'PF'}, optional
+        Select type of N^2 smoothing and subsequent strain calculation.
+        Defaults to adiabatic leveling.
+    return_diagnostics : bool, optional
+        Default is False. If True, this function will return a dictionary
+        containing variables such as shear spectra, shear/strain ratios,
 
     Returns
     -------
-    P_shear : array-like
-        Matrix of shear spectra for each depth window
-    P_strain : array-like
-        Matrix of shear spectra for each depth window
-    Mmax_sh : array-like
-        Cutoff wavenumber (kc)
-    Mmax_st : array-like
-        Cutoff wavenubmer used for strain only calculation
-    Rwtot : array-like
-        Shear/strain ratio used, computed from spectra unless specificed in input
-    krho_shst : array-like
-        krho calculated from both shear and strain spectra
-    krho_st : array-like
-        krho calculated from strain only
     eps_shst : array-like
         Epsilon calculated from both shear and strain spectra
-    eps_st : array-like
-        Epsilon calculated from strain only
-    m : array-like
-        Wavenumber vector
-    z_bin : array-like
-        Center points of depth windows
-    Nmean : array-like
-        Average N per depth window calculated as root-mean from n2 above
+    krho_shst : array-like
+        krho calculated from both shear and strain spectra
+    diag : dict, optional
+        Dictionary of diagnostic variables, set return with the
+        `return_diagnostics' argument. `diag` holds the following variables:
+
+        ``"P_shear"``
+            Matrix of shear spectra for each depth window (`array-like`).
+        ``"P_strain"``
+            Matrix of strain spectra for each depth window
+        ``"Mmax_sh"``
+            Cutoff wavenumber kc (`array-like`).
+        ``"Mmax_st"``
+            Cutoff wavenubmer used for strain only calculation (`array-like`).
+        ``"Rwtot"``
+            Shear/strain ratio used, computed from spectra unless specificed in
+            input (`array-like`).
+        ``"krho_st"``
+            krho calculated from strain only (`array-like`).
+        ``"eps_st"``
+            Epsilon calculated from strain only (`array-like`).
+        ``"m"``
+            Wavenumber vector (`array-like`).
+        ``"z_bin"``
+            Center points of depth windows (`array-like`).
+        ``"Nmean"``
+            Average N per depth window calculated as root-mean from n2 above (`array-like`).
+
+    Notes
+    -----
+    Adapted from Jen MacKinnon and Amy Waterhouse.
     """
     # average lon, lat into one value if they are vectors
     lon = np.nanmean(lon)
     lat = np.nanmean(lat)
+
+    # Coriolis parameter for this latitude
+    f = np.absolute(gsw.f(lat))
 
     sa, ii = helpers.denan(s)
     te = t[ii]
@@ -108,207 +298,86 @@ def shearstrain(
         uz = u
         vz = v
 
+    # Create an evenly spaced wavenumber vector if none was provided
+    if m is None:
+        m = np.arange(2 * np.pi / 300, 2 * np.pi / 10, 2 * np.pi / 600)
+
+    # Generate depth bin vector if none provided
     if z_bin is None:
         z_bin = np.arange(75, np.max(z), 150)
     else:
         # cut out any bins that won't hold any data
         z_bin = z_bin[z_bin < np.max(z)]
     nz = np.squeeze(z_bin.shape)
+    delz = np.mean(np.diff(z_bin))
 
-    # Calculate buoyancy frequency by fitting a 2nd order polynomial
-    SA = gsw.SA_from_SP(sa, pr, lon, lat)
-    CT = gsw.CT_from_t(SA, te, pr)
-    N2, Pbar = gsw.Nsquared(SA, CT, pr, lat=lat)
-    # Convert output pressure to depth
-    Zbar = -1 * gsw.z_from_p(Pbar, lat)
-    n2polyfit = np.zeros(N2.shape) * np.nan
-    n2polyfit_mean = n2polyfit.copy()
-    for jj in np.array(range(nz - 1)):
-        if jj < nz - 2:
-            ij = np.squeeze(np.where(((Zbar > z_bin[jj]) & (Zbar <= z_bin[jj + 2]))))
-        elif jj == nz - 1:
-            ij = np.squeeze(np.where(((Zbar > z_bin[jj]) & (Zbar <= z_bin[jj + 1]))))
-        p = np.polyfit(Zbar[ij], N2[ij], deg=2)
-        pv = np.polyval(p, Zbar[ij])
-        n2polyfit_mean[ij] = np.tile(np.mean(pv), ij.shape)
-        n2polyfit[ij] = pv
+    # Calculate a smoothed N^2 profile and strain, either using 2nd order
+    # polynomial fits to N^2 for each window (PF) or the adiabatic leveling
+    # method (AL).
+    if smooth == "PF":
+        strain, z_st, N2ref = strain_polynomial_fits(
+            sa, te, pr, z, lon, lat, z_bin, delz
+        )
+    elif smooth == "AL":
+        strain, z_st, N2ref = strain_adiabatic_leveling(
+            sa, te, pr, z, lon, lat, bin_width=300
+        )
 
-    # Extraplolate over NaN's at the bottom
-    n2polyfit_mean = helpers.extrapolate_data(n2polyfit_mean)
-    n2polyfit = helpers.extrapolate_data(n2polyfit)
-
-    # Interpolate to LADCP depths
-    n2polyfit_mean_adcp = interp1d(Zbar, n2polyfit_mean, bounds_error=False)(dd)
-    # Interpolate to CTD depths
-    n2polyfit_mean_ctd = interp1d(Zbar, n2polyfit_mean, bounds_error=False)(z)
+    # Interpolate N2ref to LADCP depths
+    N2ref_adcp = interp1d(z_st, N2ref, bounds_error=False)(dd)
+    # Interpolate N2ref to CTD depths
+    # N2ref_ctd = interp1d(z_st, N2ref, bounds_error=False)(z)
 
     # Buoyancy-normalize shear
-    shear_un = uz / np.real(np.sqrt(n2polyfit_mean_adcp))
-    shear_vn = vz / np.real(np.sqrt(n2polyfit_mean_adcp))
+    shear_un = uz / np.real(np.sqrt(N2ref_adcp))
+    shear_vn = vz / np.real(np.sqrt(N2ref_adcp))
     shearn = shear_un + 1j * shear_vn
     z_sh = dd.copy()
-
-    # Calculate strain
-    strain = (N2 - n2polyfit) / n2polyfit_mean
-    z_st = z[:-1] + np.diff(z[:2] / 2)
-
-    # Create an evenly spaced wavenumber vector
-    if m is None:
-        m = np.arange(2 * np.pi / 300, 2 * np.pi / 10, 2 * np.pi / 600)
 
     # Remove nan in shear, strain
     iin = np.isfinite(shearn)
     shearn = shearn[iin]
     z_sh = z_sh[iin]
-    n2polyfit_mean_adcp = n2polyfit_mean_adcp[iin]
+    N2ref_adcp = N2ref_adcp[iin]
 
     iin = np.isfinite(strain)
     strain = strain[iin]
     z_st = z_st[iin]
 
-    # Run shear/strain calculation
-    (
-        P_shear,
-        P_strain,
-        Mmax_sh,
-        Mmax_st,
-        Rwtot,
-        krho_shst,
-        krho_st,
-        Nmean,
-    ) = compute_shearstrain_krho(
-        shearn,
-        z_sh,
-        strain,
-        z_st,
-        n2polyfit_mean_adcp,
-        lat,
-        m,
-        z_bin,
-        m_include_sh=m_include_sh,
-        m_include_st=m_include_st,
-    )
+    # Jen's code has the option for setting the shear/strain ratio. Not sure
+    # whether to keep this or not.
+    Rwavg = None
 
-    # Calculate turbulent dissipation from krho
-    n2 = interp1d(pr, n2polyfit_mean_ctd)(z_bin)
-    eps_shst = 1 / 0.2 * krho_shst * n2
-    eps_st = 1 / 0.2 * krho_st * n2
+    n2 = N2ref_adcp
 
-    return (
-        P_shear,
-        P_strain,
-        Mmax_sh,
-        Mmax_st,
-        Rwtot,
-        krho_shst,
-        krho_st,
-        eps_shst,
-        eps_st,
-        m,
-        z_bin,
-        Nmean,
-    )
-
-
-def compute_shearstrain_krho(
-    shearn,
-    z_sh,
-    strain,
-    z_st,
-    n2,
-    lat,
-    m,
-    z_bin,
-    Rwavg=None,
-    m_include_sh=None,
-    m_include_st=None,
-):
-    """
-    Compute vertical diffusivity based on the shear/strain parameterization.
-
-    Adapted from Jen MacKinnon.
-
-    Parameters
-    ----------
-    shearn : array-like
-        Vertical shear profile (du/dz+i*dv/dz) normalized by a SMOOTHED version of N
-    z_sh : array-like
-        Depth corresponding to shearn
-    strain : array-like
-        Strain profile
-    z_st : array-like
-        Depth corresponding to strain
-    n2 : array-like
-        SMOOTHED version of N^2 interpolated onto SHEAR depth vector
-    lat : array-like or float
-        Profile latitude
-    m : array-like
-        Wavenumber vector to interpolate spectra onto
-    z_bin : array-like
-        Centers of windows over which spectra are computed, typically some-
-        thing like 50:150:max(z), where 50 is the base of the mixed layer.
-        Note that windows are half-overlapping so the 150 spacing above means
-        each window is 300 m tall.
-    Rwavg : array-like, optional
-        Shear/strain ratio of z_bin.shape if you'd like to specify it (based
-        for example on a station average), otherwise computed using shear and
-        strain spectra for each spectral window.
-    m_include_sh : array-like, optional
-        Wavenumber integration range for shear spectra. Array must consist of indices
-        or boolans to index m. Defaults to first 4 wavenumbers.
-    m_include_st : array-like, optional
-        Wavenumber integration range for strain spectra. Array must consist of indices
-        or boolans to index m. Defaults to first 4 wavenumbers.
-
-    Returns
-    -------
-    P_shear : array-like
-        Matrix of shear spectra for each depth window
-    P_strain : array-like
-        Matrix of shear spectra for each depth window
-    Mmax_sh : array-like
-        Cutoff wavenumber (kc)
-    Mmax_st : array-like
-        Cutoff wavenubmer used for strain only calculation
-    Rwtot : array-like
-        Shear/strain ratio used, computed from spectra unless specificed in input
-    krho_shst : array-like
-        krho calculated from both shear and strain spectra
-    krho_st : array-like
-        krho calculated from strain only
-    Nmean : array-like
-        Average N per depth window calculated as root-mean from n2 above
-    """
     # Convert wavenumber includes in case they are given as range().
     if m_include_sh is not None:
         m_include_sh = np.asarray(m_include_sh)
     if m_include_st is not None:
         m_include_st = np.asarray(m_include_st)
 
-    delz = np.mean(np.diff(z_bin))
-    nz = z_bin.size
-
     K0 = 0.05 * 1e-4
-    N0 = 5.24e-3
+    N0 = 5.24e-3  # (3 cph)
+    eps0 = 7.8e-10  # Waterman et al. 2014
+    # eps0 = 7.9e-10 # Polzin et al. 1995
+    # eps0 = 6.73e-10 # Gregg et al. 2003
 
-    P_shear = np.zeros((nz, m.size)) * np.nan
+    P_shear = np.full((nz, m.size), np.nan)
     P_strain = P_shear.copy()
-    Mmax_sh = np.zeros((nz)) * np.nan
-    Rwtot = Mmax_sh.copy()
-    krho_shst = Mmax_sh.copy()
-    krho_st = krho_shst.copy()
+    Mmax_sh = np.full(nz, np.nan)
     Mmax_st = Mmax_sh.copy()
-    Nmean = Mmax_sh.copy()
-
-    f = np.absolute(gsw.f(lat))
-    f30 = gsw.f(30)
+    Rwtot = np.full(nz, np.nan)
+    krho_shst = np.full(nz, np.nan)
+    krho_st = np.full(nz, np.nan)
+    eps_shst = np.full(nz, np.nan)
+    eps_st = np.full(nz, np.nan)
+    Nmean = np.full(nz, np.nan)
 
     for iwin, zi in enumerate(z_bin):
         zw = z_bin[iwin]
         iz = (z_sh >= (zw - delz)) & (z_sh <= (zw + delz))
         nn = np.sqrt(np.nanmean(n2[iz]))
         Nmean[iwin] = nn
-        Jf = f * np.arccosh(nn / f) / f30 / np.arccosh(N0 / f30)
 
         # Shear spectra
         ig = ~np.isnan(shearn[iz])
@@ -343,7 +412,7 @@ def compute_shearstrain_krho(
         # See methods in Gregg et al 2003 for factor 0.66
         if m_include_sh is not None:
             iim = m_include_sh
-        else:
+        else:  # select first 4 wavenumbers by default
             # print('selecting first four wavenumbers for strain integration')
             iim = np.array(range(4))
         specsum = np.cumsum(Ptot_sh * np.mean(np.diff(m)))
@@ -356,9 +425,9 @@ def compute_shearstrain_krho(
             Mmax_sh[iwin] = np.nan
 
         # Shear/strain ratio
-        if Rwavg:
+        if Rwavg:  # preset ratio
             Rw = Rwavg[iwin]
-        else:
+        else:  # calculate ratio
             if np.any(np.isfinite(Ptot_sh[iim])) & np.any(np.isfinite(Ptot_st[iim])):
                 Rw = np.nanmean(Ptot_sh[iim]) / np.nanmean(Ptot_st[iim])
                 Rw = 1.01 if Rw < 1.01 else Rw
@@ -376,7 +445,20 @@ def compute_shearstrain_krho(
         )
 
         krho_shst[iwin] = (
-            K0 * np.sum(Ptot_sh[iim]) ** 2 / np.sum(Pgm[iim]) ** 2 * hRw * Jf
+            K0
+            * np.sum(Ptot_sh[iim]) ** 2
+            / np.sum(Pgm[iim]) ** 2
+            * hRw
+            * latitude_correction(f, nn)
+        )
+        eps_shst[iwin] = (
+            eps0
+            * nn ** 2
+            / N0 ** 2
+            * np.sum(Ptot_sh[iim]) ** 2
+            / np.sum(Pgm[iim]) ** 2
+            * hRw
+            * latitude_correction(f, nn)
         )
 
         # find cutoff wavenumber based on STRAIN spectra
@@ -404,10 +486,39 @@ def compute_shearstrain_krho(
             # for strain, different for shear:
             h2Rw = 1 / 6 / np.sqrt(2) * Rw * (Rw + 1) / np.sqrt(Rw - 1)
             krho_st[iwin] = (
-                K0 * np.sum(Ptot_st[iim]) ** 2 / np.sum(Pgm_st[iim]) ** 2 * h2Rw * Jf
+                K0
+                * np.sum(Ptot_st[iim]) ** 2
+                / np.sum(Pgm_st[iim]) ** 2
+                * h2Rw
+                * latitude_correction(f, nn)
             )
+            eps_st[iwin] = (
+                eps0
+                * nn ** 2
+                / N0 ** 2
+                * np.sum(Ptot_st[iim]) ** 2
+                / np.sum(Pgm_st[iim]) ** 2
+                * h2Rw
+                * latitude_correction(f, nn)
+            )
+
         else:
             Mmax_st[iwin] = np.nan
             krho_st[iwin] = np.nan
 
-    return P_shear, P_strain, Mmax_sh, Mmax_st, Rwtot, krho_shst, krho_st, Nmean
+    if return_diagnostics:
+        diag = dict(
+            eps_st=eps_st,
+            krho_st=krho_st,
+            P_shear=P_shear,
+            P_strain=P_strain,
+            Mmax_sh=Mmax_sh,
+            Mmax_st=Mmax_st,
+            Rwtot=Rwtot,
+            m=m,
+            z_bin=z_bin,
+            Nmean=Nmean,
+        )
+        return eps_shst, krho_shst, diag
+    else:
+        return eps_shst, krho_shst

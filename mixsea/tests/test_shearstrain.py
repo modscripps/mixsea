@@ -1,10 +1,13 @@
 import numpy as np
+import pytest
 
 from mixsea import shearstrain
 
 
 # Use the ctd and ladcp profile defined as fixture in conftest.py
-def test_shearstrain(ctd_profile, ladcp_profile):
+# Run the test both for adiabatic leveling and polynomial fit method.
+@pytest.mark.parametrize("smooth", ["AL", "PF"])
+def test_shearstrain(ctd_profile, ladcp_profile, smooth):
     assert ctd_profile["lon"].shape == ctd_profile["lat"].shape
     # Center points of depth windows. Windows are half overlapping, i.e.
     # their size (300m) is double the spacing here (150m).
@@ -20,19 +23,7 @@ def test_shearstrain(ctd_profile, ladcp_profile):
     m_include_sh = list(range(3))
     m_include_st = list(range(1, 10))
 
-    (
-        P_shear,
-        P_strain,
-        Mmax_sh,
-        Mmax_st,
-        Rwtot,
-        krho_shst,
-        krho_st,
-        eps_shst,
-        eps_st,
-        m,
-        z_bin,
-    ) = shearstrain.shearstrain(
+    (eps_shst, krho_shst, diag,) = shearstrain.shearstrain(
         ctd_profile["s"],
         ctd_profile["t"],
         ctd_profile["p"],
@@ -47,6 +38,9 @@ def test_shearstrain(ctd_profile, ladcp_profile):
         m_include_sh=m_include_sh,
         m_include_st=m_include_st,
         ladcp_is_shear=True,
+        smooth=smooth,
+        return_diagnostics=True,
     )
 
     assert np.nanmean(np.log10(eps_shst)) < 0
+    assert np.nanmean(np.log10(diag["eps_st"])) < 0
