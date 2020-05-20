@@ -29,6 +29,7 @@ Shear/strain-based parameterization
     shearstrain.strain_adiabatic_leveling
     shearstrain.gm_shear_variance
     shearstrain.gm_strain_variance
+    shearstrain.find_cutoff_wavenumber
 
 Stratification
 ==============

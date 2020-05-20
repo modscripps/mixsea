@@ -1,5 +1,6 @@
 import gsw
 import numpy as np
+from scipy.integrate import cumtrapz
 from scipy.interpolate import interp1d
 
 from . import helpers, nsq
@@ -135,6 +136,42 @@ def strain_adiabatic_leveling(s, t, p, z, lon, lat, bin_width):
     z_st = z[:-1] + np.diff(z[:2] / 2)
     strain = interp1d(Zbar, strain, bounds_error=False)(z_st)
     return strain, z_st, N2ref
+
+
+def find_cutoff_wavenumber(P, m, integration_limit, lambda_min=5):
+    """
+    Find cutoff wavenumber for spectrum integration.
+
+    Parameters
+    ----------
+    P : array-like
+        Spectrum
+    m : array-like
+        Vertical wavenumber vector
+    integration_limit : float
+        Variance limit for integration
+    lambda_min : float, optional
+        Minimum vertical wavelength lambda_z=2pi/m, by default 5
+
+    Returns
+    -------
+    iim : array-like
+        Integration range as indexer to `P`.
+    """
+    specsum = cumtrapz(P, m)
+    specsum = np.insert(specsum, 0, 0)
+    iim = np.flatnonzero(
+        np.less(specsum, integration_limit, where=np.isfinite(specsum))
+    )
+    if iim.size == 1:  # need at least two data points for integration
+        iim = np.append(iim, 1)
+    if iim.size > 1:
+        # Do not go to wavenumbers corresponding to lambda_z < lambda_min meter
+        if np.max(m[iim] / 2 / np.pi) > 0.2:
+            iim = np.where(m / 2 / np.pi < 0.2)[0]
+        return iim, np.max(m[iim])
+    else:
+        return iim, np.nan
 
 
 def latitude_correction(f, N):
@@ -299,6 +336,8 @@ def shearstrain(
     m_include_st=np.arange(4),
     ladcp_is_shear=False,
     smooth="AL",
+    sh_integration_limit=0.66,
+    st_integration_limit=0.22,
     return_diagnostics=False,
 ):
     """
@@ -342,6 +381,12 @@ def shearstrain(
     smooth : {'AL', 'PF'}, optional
         Select type of N^2 smoothing and subsequent strain calculation.
         Defaults to adiabatic leveling.
+    sh_integration_limit : float
+        Shear variance level for determining integration cutoff wavenumber.
+        Defaults to 0.66, compare Gregg et al. (2003).
+    st_integration_limit : float
+        Strain variance level for determining integration cutoff wavenumber.
+        Defaults to 0.22, compare Gregg et al. (2003).
     return_diagnostics : bool, optional
         Default is False. If True, this function will return a dictionary
         containing variables such as shear spectra, shear/strain ratios,
@@ -511,21 +556,19 @@ def shearstrain(
             P_strain[iwin, :] = np.nan
             Ptot_st = np.zeros_like(m) * np.nan
 
-        # Find cutoff wavenumber based on SHEAR spectra.
-        # See methods in Gregg et al 2003 for factor 0.66
-        iim = m_include_sh
-        specsum = np.cumsum(Ptot_sh * np.mean(np.diff(m)))
-        iim2 = np.where(np.less(specsum[iim], 0.66, where=np.isfinite(specsum[iim])))[0]
-        if iim2.size > 0:
-            iim = iim[iim2]
-        if iim.size > 1:
-            Mmax_sh[iwin] = np.max(m[iim])
-        else:
-            Mmax_sh[iwin] = np.nan
+        # Shear cutoff wavenumber
+        iimsh, Mmax_sh[iwin] = find_cutoff_wavenumber(
+            Ptot_sh[m_include_sh], m[m_include_sh], sh_integration_limit
+        )
+
+        # Strain cutoff wavenumber
+        iimst, Mmax_st[iwin] = find_cutoff_wavenumber(
+            Ptot_st[m_include_st], m[m_include_st], st_integration_limit
+        )
 
         # Shear/strain ratio
-        if np.any(np.isfinite(Ptot_sh[iim])) & np.any(np.isfinite(Ptot_st[iim])):
-            Rw = np.nanmean(Ptot_sh[iim]) / np.nanmean(Ptot_st[iim])
+        if np.any(np.isfinite(Ptot_sh[iimsh])) & np.any(np.isfinite(Ptot_st[iimsh])):
+            Rw = np.nanmean(Ptot_sh[iimsh]) / np.nanmean(Ptot_st[iimsh])
             Rw = 1.01 if Rw < 1.01 else Rw
         else:
             Rw = np.nan
@@ -533,55 +576,40 @@ def shearstrain(
 
         hRw = 3 * (Rw + 1) / (2 * np.sqrt(2) * Rw * np.sqrt(Rw - 1))
 
+        # Integrate shear spectrum to obtain shear variance
+        Ssh = np.trapz(Ptot_sh[iimsh], m[iimsh])
+
         # GM shear variance
-        Sgm, Pgm = gm_shear_variance(m, iim, Nm)
+        Sshgm, Pgm = gm_shear_variance(m, iimsh, Nm)
 
         krho_shst[iwin] = (
-            K0
-            * np.trapz(Ptot_sh[iim], m[iim]) ** 2
-            / Sgm ** 2
-            * hRw
-            * latitude_correction(f, Nm)
+            K0 * (Ssh ** 2 / Sshgm ** 2) * (hRw * latitude_correction(f, Nm))
         )
         eps_shst[iwin] = (
             eps0
             * (Nm ** 2 / N0 ** 2)
-            * (np.trapz(Ptot_sh[iim], m[iim]) ** 2 / Sgm ** 2)
+            * (Ssh ** 2 / Sshgm ** 2)
             * (hRw * latitude_correction(f, Nm))
         )
 
-        # find cutoff wavenumber based on STRAIN spectra
-        iim = m_include_st
-        specsum = np.cumsum(Ptot_st[iim] * np.mean(np.diff(m[iim])))
-        iim2 = np.where(np.less(specsum, 0.22, where=np.isfinite(specsum)))[0]
-        iim = iim[iim2]
-        if iim.size > 1:
-            # Do not go to wavenumbers corresponding to lambda_z < 5m
-            if np.max(m[iim] / 2 / np.pi) > 0.2:
-                iim = np.where(m / 2 / np.pi < 0.2)[0]
-            Mmax_st[iwin] = np.max(m[iim])
-            # GM strain variance
-            Sgm, Pgm = gm_strain_variance(m, iim, Nm)
-            # Use assumed shear/strain ratio of 3
-            Rw = 3
-            # for strain, different for shear:
-            h2Rw = 1 / 6 / np.sqrt(2) * Rw * (Rw + 1) / np.sqrt(Rw - 1)
+        # Integrate strain spectrum to obtain strain variance
+        Sst = np.trapz(Ptot_st[iimst], m[iimst])
+        # GM strain variance
+        Sstgm, Pgm = gm_strain_variance(m, iimst, Nm)
+        # Use assumed shear/strain ratio of 3
+        Rw = 3
+        # for strain, different for shear:
+        h2Rw = 1 / 6 / np.sqrt(2) * Rw * (Rw + 1) / np.sqrt(Rw - 1)
 
-            krho_st[iwin] = (
-                K0
-                * (np.trapz(Ptot_st[iim], m[iim]) ** 2 / Sgm ** 2)
-                * (h2Rw * latitude_correction(f, Nm))
-            )
-            eps_st[iwin] = (
-                eps0
-                * (Nm ** 2 / N0 ** 2)
-                * (np.trapz(Ptot_st[iim], m[iim]) ** 2 / Sgm ** 2)
-                * (h2Rw * latitude_correction(f, Nm))
-            )
-
-        else:
-            Mmax_st[iwin] = np.nan
-            krho_st[iwin] = np.nan
+        krho_st[iwin] = (
+            K0 * (Sst ** 2 / Sstgm ** 2) * (h2Rw * latitude_correction(f, Nm))
+        )
+        eps_st[iwin] = (
+            eps0
+            * (Nm ** 2 / N0 ** 2)
+            * (Sst ** 2 / Sstgm ** 2)
+            * (h2Rw * latitude_correction(f, Nm))
+        )
 
     if return_diagnostics:
         diag = dict(
