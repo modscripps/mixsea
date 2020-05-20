@@ -478,8 +478,6 @@ def shearstrain(
 
     # Interpolate N2ref to LADCP depths
     N2ref_adcp = interp1d(z_st, N2ref, bounds_error=False)(dd)
-    # Interpolate N2ref to CTD depths
-    # N2ref_ctd = interp1d(z_st, N2ref, bounds_error=False)(z)
 
     # Buoyancy-normalize shear
     shear_un = uz / np.real(np.sqrt(N2ref_adcp))
@@ -566,22 +564,25 @@ def shearstrain(
             Ptot_st[m_include_st], m[m_include_st], st_integration_limit
         )
 
-        # Shear/strain ratio
-        if np.any(np.isfinite(Ptot_sh[iimsh])) & np.any(np.isfinite(Ptot_st[iimsh])):
-            Rw = np.nanmean(Ptot_sh[iimsh]) / np.nanmean(Ptot_st[iimsh])
-            Rw = 1.01 if Rw < 1.01 else Rw
-        else:
-            Rw = np.nan
-        Rwtot[iwin] = Rw
-
-        hRw = 3 * (Rw + 1) / (2 * np.sqrt(2) * Rw * np.sqrt(Rw - 1))
-
         # Integrate shear spectrum to obtain shear variance
         Ssh = np.trapz(Ptot_sh[iimsh], m[iimsh])
-
         # GM shear variance
-        Sshgm, Pgm = gm_shear_variance(m, iimsh, Nm)
+        Sshgm, Pshgm = gm_shear_variance(m, iimsh, Nm)
 
+        # Integrate strain spectrum to obtain strain variance
+        Sst = np.trapz(Ptot_st[iimst], m[iimst])
+        # GM strain variance
+        Sstgm, Pstgm = gm_strain_variance(m, iimst, Nm)
+
+        # Shear/strain ratio normalized by GM. Factor 3 corrects for the ratio
+        # of GM shear to strain = 3 N^2.
+        Rw = 3 * (Ssh / Sshgm) / (Sst / Sstgm)
+        Rwtot[iwin] = Rw
+        # Avoid negative square roots in hRw below
+        Rw = 1.01 if Rw < 1.01 else Rw
+
+        # Shear/strain parameterization
+        hRw = 3 * (Rw + 1) / (2 * np.sqrt(2) * Rw * np.sqrt(Rw - 1))
         krho_shst[iwin] = (
             K0 * (Ssh ** 2 / Sshgm ** 2) * (hRw * latitude_correction(f, Nm))
         )
@@ -592,15 +593,10 @@ def shearstrain(
             * (hRw * latitude_correction(f, Nm))
         )
 
-        # Integrate strain spectrum to obtain strain variance
-        Sst = np.trapz(Ptot_st[iimst], m[iimst])
-        # GM strain variance
-        Sstgm, Pgm = gm_strain_variance(m, iimst, Nm)
+        # Strain only parameterization
         # Use assumed shear/strain ratio of 3
         Rw = 3
-        # for strain, different for shear:
         h2Rw = 1 / 6 / np.sqrt(2) * Rw * (Rw + 1) / np.sqrt(Rw - 1)
-
         krho_st[iwin] = (
             K0 * (Sst ** 2 / Sstgm ** 2) * (h2Rw * latitude_correction(f, Nm))
         )
