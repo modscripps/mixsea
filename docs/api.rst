@@ -27,6 +27,8 @@ Shear/strain-based parameterization
     shearstrain.latitude_correction
     shearstrain.strain_polynomial_fits
     shearstrain.strain_adiabatic_leveling
+    shearstrain.gm_shear_variance
+    shearstrain.gm_strain_variance
 
 Stratification
 ==============

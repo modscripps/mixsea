@@ -66,11 +66,6 @@ def strain_polynomial_fits(s, t, p, z, lon, lat, zbin, dz):
     isN = np.isfinite(N2)
     n2polyfit = np.zeros(N2.shape) * np.nan
     n2polyfit_mean = n2polyfit.copy()
-    # zbin gives center of windows. We want to do the fit over the whole
-    # window size but not fill the whole window, just to the overlap. Wait a
-    # minute, that doesn't sound right. We want to calculate spectra over the
-    # whole window! Is it ok to have discontinuities in strain? I will keep
-    # this as it is for now...
     for iwin, zw in enumerate(zbin):
         ij = (Zbar >= (zw - dz)) & (Zbar < (zw + dz))
         ij2 = (Zbar >= (zw - dz / 2)) & (Zbar < (zw + dz / 2))
@@ -85,7 +80,9 @@ def strain_polynomial_fits(s, t, p, z, lon, lat, zbin, dz):
     # Calculate strain
     strain = (N2 - n2polyfit) / n2polyfit_mean
     z_st = z[:-1] + np.diff(z[:2] / 2)
-    N2ref = n2polyfit_mean
+    # N2ref = n2polyfit_mean
+    N2ref = interp1d(Zbar, n2polyfit_mean, bounds_error=False)(z_st)
+    strain = interp1d(Zbar, strain, bounds_error=False)(z_st)
     return strain, z_st, N2ref
 
 
@@ -132,10 +129,11 @@ def strain_adiabatic_leveling(s, t, p, z, lon, lat, bin_width):
     SA = gsw.SA_from_SP(s, p, lon, lat)
     CT = gsw.CT_from_t(SA, t, p)
     N2, Pbar = gsw.Nsquared(SA, CT, p, lat=lat)
-    # Zbar = -1 * gsw.z_from_p(Pbar, lat)
+    Zbar = -1 * gsw.z_from_p(Pbar, lat)
     N2ref = interp1d(p, N2ref)(Pbar)
-    strain = strain = (N2 - N2ref) / N2ref
+    strain = (N2 - N2ref) / N2ref
     z_st = z[:-1] + np.diff(z[:2] / 2)
+    strain = interp1d(Zbar, strain, bounds_error=False)(z_st)
     return strain, z_st, N2ref
 
 
@@ -175,6 +173,116 @@ def latitude_correction(f, N):
     return f * np.arccosh(N / f) / (f30 * np.arccosh(N0 / f30))
 
 
+def gm_shear_variance(m, iim, N):
+    r"""
+    GM model shear variance
+
+    Parameters
+    ----------
+    m : array-like
+        Vertical wavenumber vector [rad/m]
+    iim : array-like
+        Wavenumber integration range, indexer to m
+    N : float
+        Local buoyancy frequency [s^-1]
+
+    Returns
+    -------
+    Sgm : float
+        GM shear variance normalized by N^2 [1/m^2].
+    Pgm : array-like
+        GM shear spectrum for wavenumber range `m`.
+
+    Notes
+    -----
+    Returns GM shear variance normalized by buoyancy frequency by integrating
+    `Pgm` over a wavenumber range of the GM shear spectrum  as presented in
+    Kunze et al. (2006) :cite:`Kunze2006` eq. 6:
+
+    .. math::
+
+        \frac{_{GM}\left< V_z^2\right>}{\overline{N}^2} = \frac{3 \pi E_0 b j_\ast}{2} \int_{m_\mathrm{min}}^{m_\mathrm{max}} \frac{m^2 dm}{(m + m_\ast)^2}
+
+    with :math:`j_\ast=3`, :math:`E_0=6.3\times10^{-5}`, :math:`N_0=5.2\times
+    10^{-3}` rad/s, :math:`b=1300` m, and
+
+    .. math::
+
+        m_\ast = \frac{\overline{N}}{N_0}\frac{\pi j_\ast}{b}
+
+    See also
+    --------
+    gm_strain_variance : GM strain variance
+    """
+    N0 = 5.24e-3  # reference buoyancy frequency = 3 cph
+    b = 1300  # thermocline scale depth
+    jstar = 3
+    E0 = 6.3e-5  # GM energy level
+    Pgm = (
+        (3 * np.pi * E0 * b * jstar / 2)
+        * m ** 2
+        / (m + jstar * np.pi / b * N / N0) ** 2
+    )
+    # integrate
+    Sgm = np.trapz(y=Pgm[iim], x=m[iim])
+    return Sgm, Pgm
+
+
+def gm_strain_variance(m, iim, N):
+    r"""
+    GM model strain variance.
+
+    Parameters
+    ----------
+    m : array-like
+        Vertical wavenumber vector [rad/m].
+    iim : array-like
+        Wavenumber integration range, indexer to `m`.
+    N : float
+        Local buoyancy frequency [s^-1].
+
+    Returns
+    -------
+    Sgm : float
+        GM strain variance normalized by N^2 [1/m^2].
+    Pgm : array-like
+        GM strain spectrum for wavenumber range `m`.
+
+    Notes
+    -----
+    Returns GM strain variance by integrating `Pgm` over a wavenumber range of
+    the GM shear spectrum  as presented in Kunze et al. (2006)
+    :cite:`Kunze2006` eq. 10:
+
+    .. math::
+
+        \frac{_{GM}\left< V_z^2\right>}{\overline{N}^2} = \frac{\pi E_0 b j_\ast}{2} \int_{m_\mathrm{min}}^{m_\mathrm{max}} \frac{m^2 dm}{(m + m_\ast)^2}
+
+    with :math:`j_\ast=3`, :math:`E_0=6.3\times10^{-5}`, :math:`N_0=5.2\times
+    10^{-3}` rad/s, :math:`b=1300` m, and
+
+    .. math::
+
+        m_\ast = \frac{\overline{N}}{N_0}\frac{\pi j_\ast}{b}
+
+    Note that this corresponds to the buoyancy-normalized GM shear variance
+    divided by 3.
+
+    See also
+    --------
+    gm_shear_variance : GM shear variance
+
+    """
+    N0 = 5.24e-3  # reference buoyancy frequency = 3 cph
+    b = 1300  # thermocline scale depth
+    jstar = 3
+    E0 = 6.3e-5  # GM energy level
+    Pgm = (np.pi * E0 * b * jstar / 2) * m ** 2 / (m + jstar * np.pi / b * N / N0) ** 2
+    # integrate
+    Sgm = np.trapz(y=Pgm[iim], x=m[iim])
+    return Sgm, Pgm
+
+
 def shearstrain(
     s,
     t,
@@ -187,8 +295,8 @@ def shearstrain(
     ladcp_z,
     m=None,
     z_bin=None,
-    m_include_sh=None,
-    m_include_st=None,
+    m_include_sh=np.arange(4),
+    m_include_st=np.arange(4),
     ladcp_is_shear=False,
     smooth="AL",
     return_diagnostics=False,
@@ -223,11 +331,11 @@ def shearstrain(
         np.arange(75, max(z), 150). Note that windows are half-overlapping so
         the 150 spacing above means each window is 300 m tall.
     m_include_sh : array-like, optional
-        Wavenumber integration range for shear spectra. Array must consist of indices
-        or boolans to index m. Defaults to first 4 wavenumbers.
+        Wavenumber integration range for shear spectra. Array must consist of
+        indices or boolans to index m. Defaults to first 4 wavenumbers.
     m_include_st : array-like, optional
-        Wavenumber integration range for strain spectra. Array must consist of indices
-        or boolans to index m. Defaults to first 4 wavenumbers.
+        Wavenumber integration range for strain spectra. Array must consist of
+        indices or boolans to index m. Defaults to first 4 wavenumbers.
     ladcp_is_shear : bool, optional
         Indicate whether LADCP data is velocity or shear.
         Defaults to False (velocity).
@@ -268,7 +376,7 @@ def shearstrain(
         ``"z_bin"``
             Center points of depth windows (`array-like`).
         ``"Nmean"``
-            Average N per depth window calculated as root-mean from n2 above (`array-like`).
+            Average N per depth window calculated as root-mean from N^2(`array-like`).
 
     Notes
     -----
@@ -300,7 +408,7 @@ def shearstrain(
 
     # Create an evenly spaced wavenumber vector if none was provided
     if m is None:
-        m = np.arange(2 * np.pi / 300, 2 * np.pi / 10, 2 * np.pi / 600)
+        m = wavenumber_vector(w=300)
 
     # Generate depth bin vector if none provided
     if z_bin is None:
@@ -344,20 +452,15 @@ def shearstrain(
     strain = strain[iin]
     z_st = z_st[iin]
 
-    # Jen's code has the option for setting the shear/strain ratio. Not sure
-    # whether to keep this or not.
-    Rwavg = None
+    N2 = N2ref_adcp
 
-    n2 = N2ref_adcp
+    # Convert wavenumber integration range to np.array in case it is something
+    # else:
+    m_include_sh = np.asarray(m_include_sh)
+    m_include_st = np.asarray(m_include_st)
 
-    # Convert wavenumber includes in case they are given as range().
-    if m_include_sh is not None:
-        m_include_sh = np.asarray(m_include_sh)
-    if m_include_st is not None:
-        m_include_st = np.asarray(m_include_st)
-
-    K0 = 0.05 * 1e-4
     N0 = 5.24e-3  # (3 cph)
+    K0 = 0.05 * 1e-4
     eps0 = 7.8e-10  # Waterman et al. 2014
     # eps0 = 7.9e-10 # Polzin et al. 1995
     # eps0 = 6.73e-10 # Gregg et al. 2003
@@ -376,8 +479,8 @@ def shearstrain(
     for iwin, zi in enumerate(z_bin):
         zw = z_bin[iwin]
         iz = (z_sh >= (zw - delz)) & (z_sh <= (zw + delz))
-        nn = np.sqrt(np.nanmean(n2[iz]))
-        Nmean[iwin] = nn
+        Nm = np.sqrt(np.nanmean(N2[iz]))
+        Nmean[iwin] = Nm
 
         # Shear spectra
         ig = ~np.isnan(shearn[iz])
@@ -410,11 +513,7 @@ def shearstrain(
 
         # Find cutoff wavenumber based on SHEAR spectra.
         # See methods in Gregg et al 2003 for factor 0.66
-        if m_include_sh is not None:
-            iim = m_include_sh
-        else:  # select first 4 wavenumbers by default
-            # print('selecting first four wavenumbers for strain integration')
-            iim = np.array(range(4))
+        iim = m_include_sh
         specsum = np.cumsum(Ptot_sh * np.mean(np.diff(m)))
         iim2 = np.where(np.less(specsum[iim], 0.66, where=np.isfinite(specsum[iim])))[0]
         if iim2.size > 0:
@@ -425,48 +524,34 @@ def shearstrain(
             Mmax_sh[iwin] = np.nan
 
         # Shear/strain ratio
-        if Rwavg:  # preset ratio
-            Rw = Rwavg[iwin]
-        else:  # calculate ratio
-            if np.any(np.isfinite(Ptot_sh[iim])) & np.any(np.isfinite(Ptot_st[iim])):
-                Rw = np.nanmean(Ptot_sh[iim]) / np.nanmean(Ptot_st[iim])
-                Rw = 1.01 if Rw < 1.01 else Rw
-            else:
-                Rw = np.nan
+        if np.any(np.isfinite(Ptot_sh[iim])) & np.any(np.isfinite(Ptot_st[iim])):
+            Rw = np.nanmean(Ptot_sh[iim]) / np.nanmean(Ptot_st[iim])
+            Rw = 1.01 if Rw < 1.01 else Rw
+        else:
+            Rw = np.nan
         Rwtot[iwin] = Rw
 
         hRw = 3 * (Rw + 1) / (2 * np.sqrt(2) * Rw * np.sqrt(Rw - 1))
 
-        # Gm shear spectra
-        Pgm = (
-            (3 * np.pi * 6.3e-5 * 1300 * 3 / 2)
-            * m ** 2
-            / (m + 3 * np.pi / 1300 * nn / N0) ** 2
-        )
+        # GM shear variance
+        Sgm, Pgm = gm_shear_variance(m, iim, Nm)
 
         krho_shst[iwin] = (
             K0
-            * np.sum(Ptot_sh[iim]) ** 2
-            / np.sum(Pgm[iim]) ** 2
+            * np.trapz(Ptot_sh[iim], m[iim]) ** 2
+            / Sgm ** 2
             * hRw
-            * latitude_correction(f, nn)
+            * latitude_correction(f, Nm)
         )
         eps_shst[iwin] = (
             eps0
-            * nn ** 2
-            / N0 ** 2
-            * np.sum(Ptot_sh[iim]) ** 2
-            / np.sum(Pgm[iim]) ** 2
-            * hRw
-            * latitude_correction(f, nn)
+            * (Nm ** 2 / N0 ** 2)
+            * (np.trapz(Ptot_sh[iim], m[iim]) ** 2 / Sgm ** 2)
+            * (hRw * latitude_correction(f, Nm))
         )
 
         # find cutoff wavenumber based on STRAIN spectra
-        if m_include_st is not None:
-            iim = m_include_st
-        else:
-            # print('selecting first four wavenumbers for strain integration')
-            iim = np.array(range(4))
+        iim = m_include_st
         specsum = np.cumsum(Ptot_st[iim] * np.mean(np.diff(m[iim])))
         iim2 = np.where(np.less(specsum, 0.22, where=np.isfinite(specsum)))[0]
         iim = iim[iim2]
@@ -475,31 +560,23 @@ def shearstrain(
             if np.max(m[iim] / 2 / np.pi) > 0.2:
                 iim = np.where(m / 2 / np.pi < 0.2)[0]
             Mmax_st[iwin] = np.max(m[iim])
-            # Gm shear spectra - note shear/strain ratio 3 in here when comparing to shear
-            Pgm_st = (
-                (np.pi * 6.3e-5 * 1300 * 3 / 2)
-                * m ** 2
-                / (m + 3 * np.pi / 1300 * nn / N0) ** 2
-            )
+            # GM strain variance
+            Sgm, Pgm = gm_strain_variance(m, iim, Nm)
             # Use assumed shear/strain ratio of 3
             Rw = 3
             # for strain, different for shear:
             h2Rw = 1 / 6 / np.sqrt(2) * Rw * (Rw + 1) / np.sqrt(Rw - 1)
+
             krho_st[iwin] = (
                 K0
-                * np.sum(Ptot_st[iim]) ** 2
-                / np.sum(Pgm_st[iim]) ** 2
-                * h2Rw
-                * latitude_correction(f, nn)
+                * (np.trapz(Ptot_st[iim], m[iim]) ** 2 / Sgm ** 2)
+                * (h2Rw * latitude_correction(f, Nm))
             )
             eps_st[iwin] = (
                 eps0
-                * nn ** 2
-                / N0 ** 2
-                * np.sum(Ptot_st[iim]) ** 2
-                / np.sum(Pgm_st[iim]) ** 2
-                * h2Rw
-                * latitude_correction(f, nn)
+                * (Nm ** 2 / N0 ** 2)
+                * (np.trapz(Ptot_st[iim], m[iim]) ** 2 / Sgm ** 2)
+                * (h2Rw * latitude_correction(f, Nm))
             )
 
         else:
