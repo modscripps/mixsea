@@ -22,6 +22,7 @@ Contents
    tutorialnb
    thorpe_detailed_look
    intermediate_profile_example
+   shearstrain_details
    api
    contributing
    authors

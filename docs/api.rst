@@ -23,7 +23,21 @@ Shear/strain-based parameterization
     :toctree: generated/
 
     shearstrain.shearstrain
-    shearstrain.compute_shearstrain_krho
+    shearstrain.wavenumber_vector
+    shearstrain.latitude_correction
+    shearstrain.strain_polynomial_fits
+    shearstrain.strain_adiabatic_leveling
+    shearstrain.gm_shear_variance
+    shearstrain.gm_strain_variance
+    shearstrain.find_cutoff_wavenumber
+
+Stratification
+==============
+
+.. autosummary::
+    :toctree: generated/
+
+    nsq.adiabatic_leveling
 
 Other functions
 ===============
