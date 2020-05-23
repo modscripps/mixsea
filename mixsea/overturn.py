@@ -12,7 +12,7 @@ def nan_eps_overturn(
     alpha_sq=0.9,
     background_eps=np.nan,
     use_ip=True,
-    Nsq_method="teos",
+    Nsq_method="teosp1",
     return_diagnostics=False,
 ):
     """
@@ -42,8 +42,8 @@ def nan_eps_overturn(
         the dnoise parameter is passed as the `accuracy' argument of the intermediate
         profile method. 
     Nsq_method : string, optional
-        Method for calculation of buoyancy frequency. Default is 'teos'. Options are 'bulk',
-        'endpt' and 'teos'. 
+        Method for calculation of buoyancy frequency. Default is 'teosp1'. Options are 'bulk',
+        'endpt', 'teos' and 'teosp1'. 
     return_diagnostics : dict, optional
         Default is False. If True, this function will return a dictionary containing 
         variables such as the Thorpe scale Lt, etc. 
@@ -59,6 +59,9 @@ def nan_eps_overturn(
 
 
     """
+    P = np.asarray(P)
+    T = np.asarray(T)
+    S = np.asarray(S)
 
     # Find non-NaNs
     notnan = np.isfinite(P) & np.isfinite(T) & np.isfinite(S)
@@ -82,21 +85,21 @@ def nan_eps_overturn(
     eps = np.full_like(P, np.nan)
     n2 = np.full_like(P, np.nan)
 
-    if return_diagnostics:
-        eps[notnan], n2[notnan], diag = eps_overturn(
-            P[notnan],
-            T[notnan],
-            S[notnan],
-            lon,
-            lat,
-            dnoise,
-            alpha_sq,
-            background_eps,
-            use_ip,
-            Nsq_method,
-            return_diagnostics,
-        )
+    eps[notnan], n2[notnan], diag = eps_overturn(
+        P[notnan],
+        T[notnan],
+        S[notnan],
+        lon,
+        lat,
+        dnoise,
+        alpha_sq,
+        background_eps,
+        use_ip,
+        Nsq_method,
+        return_diagnostics=True,
+    )
 
+    if return_diagnostics:
         # Replace nans in diagnostics if the size and shape seems right:
         Nnotnans = notnan.sum()
         for key in diag:
@@ -108,18 +111,6 @@ def nan_eps_overturn(
         return eps, n2, diag
 
     else:
-        eps[notnan], n2[notnan] = eps_overturn(
-            P[notnan],
-            T[notnan],
-            S[notnan],
-            lon,
-            lat,
-            dnoise,
-            alpha_sq,
-            background_eps,
-            use_ip,
-            Nsq_method,
-        )
         return eps, n2
 
 
@@ -133,7 +124,7 @@ def eps_overturn(
     alpha_sq=0.9,
     background_eps=np.nan,
     use_ip=True,
-    Nsq_method="teos",
+    Nsq_method="teosp1",
     return_diagnostics=False,
 ):
     """
@@ -164,8 +155,8 @@ def eps_overturn(
         the dnoise parameter is passed as the `accuracy' argument of the intermediate
         profile method.
     Nsq_method : string, optional
-        Method for calculation of buoyancy frequency. Default is 'teos'. Options are 'bulk',
-        'endpt' and 'teos'. 
+        Method for calculation of buoyancy frequency. Default is 'teosp1'. Options are 'bulk',
+        'endpt', 'teos' and 'teosp1'. 
     return_diagnostics : dict, optional
         Default is False. If True, this function will return a dictionary containing 
         variables such as the Thorpe scale Lt, etc. 
@@ -290,6 +281,10 @@ def eps_overturn(
 
                 # Buoyancy frequency methods.
                 if Nsq_method == "teos":
+                    n2o, _ = gsw.Nsquared(
+                        SA_sorted[[i0, i1]], CT_sorted[[i0, i1]], P[[i0, i1]], lat,
+                    )
+                elif Nsq_method == "teosp1":
                     # Go beyond overturn. Need to add 1 for this, unless end or beginning.
                     addi = 0 if i1 == ndata - 1 else 1
                     subi = 0 if i0 == 0 else 1
