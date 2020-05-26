@@ -26,7 +26,8 @@ def nan_eps_overturn(
     T : array-like
         In-situ temperature [ITS90, °C]
     S : array-like
-        Salinity [PSU]
+        Salinity [PSU]. Can be a single constant value. This may be convenient if only temperature data
+        are available.
     lon : float
         Longitude of observation
     lat : float
@@ -38,19 +39,19 @@ def nan_eps_overturn(
         Default is 0.9.
     Roc : float, optional
         Critical value of the overturn ratio Ro. An overturn will be considered
-        noise if Ro < Roc. 
+        noise if Ro < Roc.
     background_eps : float, optional
         Background epsilon where no overturn detected. Defaults to numpy.nan.
     use_ip : boolean, optional
-        Sets whether to use the intermediate profile method. Default is True. If True, 
+        Sets whether to use the intermediate profile method. Default is True. If True,
         the dnoise parameter is passed as the `accuracy' argument of the intermediate
-        profile method. 
+        profile method.
     Nsq_method : string, optional
         Method for calculation of buoyancy frequency. Default is 'teosp1'. Options are 'bulk',
-        'endpt', 'teos' and 'teosp1'. 
+        'endpt', 'teos' and 'teosp1'.
     return_diagnostics : dict, optional
-        Default is False. If True, this function will return a dictionary containing 
-        variables such as the Thorpe scale Lt, etc. 
+        Default is False. If True, this function will return a dictionary containing
+        variables such as the Thorpe scale Lt, etc.
 
     Returns
     -------
@@ -59,7 +60,7 @@ def nan_eps_overturn(
     n2 : array-like
         Background stratification of each overturn detected [s^-2]
     diag : dict, optional
-        Dictionary of diagnositc variables, set return with the `return_diagnostics' argument. 
+        Dictionary of diagnositc variables, set return with the `return_diagnostics' argument.
 
 
     """
@@ -144,8 +145,9 @@ def eps_overturn(
         Pressure [dbar]
     T : array-like
         In-situ temperature [ITS90, °C]
-    S : array-like
-        Salinity [PSU]
+    S : float or array-like
+        Salinity [PSU]. Can be a single constant value. This may be convenient if only temperature data
+        are available.
     lon : float
         Longitude of observation
     lat : float
@@ -157,19 +159,19 @@ def eps_overturn(
         Default is 0.9.
     Roc : float, optional
         Critical value of the overturn ratio Ro. An overturn will be considered
-        noise if Ro < Roc. 
+        noise if Ro < Roc.
     background_eps : float, optional
         Background epsilon where no overturn detected. Defaults to numpy.nan.
     use_ip : boolean, optional
-        Sets whether to use the intermediate profile method. Default is True. If True, 
+        Sets whether to use the intermediate profile method. Default is True. If True,
         the dnoise parameter is passed as the `accuracy' argument of the intermediate
         profile method.
     Nsq_method : string, optional
         Method for calculation of buoyancy frequency. Default is 'teosp1'. Options are 'bulk',
-        'endpt', 'teos' and 'teosp1'. 
+        'endpt', 'teos' and 'teosp1'.
     return_diagnostics : dict, optional
-        Default is False. If True, this function will return a dictionary containing 
-        variables such as the Thorpe scale Lt, etc. 
+        Default is False. If True, this function will return a dictionary containing
+        variables such as the Thorpe scale Lt, etc.
 
     Returns
     -------
@@ -178,13 +180,16 @@ def eps_overturn(
     n2 : array-like
         Background stratification of each overturn detected [s^-2]
     diag : dict, optional
-        Dictionary of diagnositc variables, set return with the `return_diagnostics' argument. 
+        Dictionary of diagnositc variables, set return with the `return_diagnostics' argument.
 
 
     """
     P = np.asarray(P)
     T = np.asarray(T)
     S = np.asarray(S)
+
+    if S.size == 1:
+        S = np.full_like(P, S)
 
     if not (P.size == T.size == S.size):
         raise ValueError(
@@ -388,18 +393,18 @@ def find_overturns(x, combine_gap=0):
     Parameters
     ----------
     x : array_like 1D
-        Profile of some quantity from which overturns can be detected 
+        Profile of some quantity from which overturns can be detected
         e.g. temperature or density.
     combine_gap : float, optional
         Combine overturns that are separated by less than a given number of points.
-        Default is 0. 
+        Default is 0.
 
     Returns
     -------
     idx_sorted : 1D numpy array
         Indices that sort the data x.
     idx_patches : (N, 2) numpy array
-        Start and end indices of the overturns. 
+        Start and end indices of the overturns.
 
     """
     idx = np.arange(x.size, dtype=int)
