@@ -14,7 +14,7 @@ def test_overturn(ctd_profile):
     )
     assert np.nanmean(eps) < 1e-4
 
-    
+
 def test_overturn_const_s(ctd_profile):
     eps, n2 = overturn.nan_eps_overturn(
         ctd_profile["p"],
