@@ -67,8 +67,9 @@ def nan_eps_overturn(
     P = np.asarray(P)
     T = np.asarray(T)
     S = np.asarray(S)
-    
-    if S.size == 1: S = np.full_like(P, S)
+
+    if S.size == 1:
+        S = np.full_like(P, S)
 
     # Find non-NaNs
     notnan = np.isfinite(P) & np.isfinite(T) & np.isfinite(S)
