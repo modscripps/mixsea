@@ -327,9 +327,9 @@ def shearstrain(
     z,
     lat,
     lon,
-    ladcp_u,
-    ladcp_v,
-    ladcp_z,
+    ladcp_u=None,
+    ladcp_v=None,
+    ladcp_z=None,
     m=None,
     z_bin=None,
     m_include_sh=np.arange(4),
@@ -357,11 +357,12 @@ def shearstrain(
         Latitude
     lon : array-like or float
         Longitude
-    ladcp_u : array-like
-        LADCP velocity east-west component [m/s]
-    ladcp_v : array-like
+    ladcp_u : array-like, optional
+        LADCP velocity east-west component [m/s]. If not provided, only the
+        strain solution with a fixed shear/strain ratio of 3 will be computed.
+    ladcp_v : array-like, optional
         LADCP velocity north-south component [m/s]
-    ladcp_z : array-like
+    ladcp_z : array-like, optional
         LADCP depth vector [m]
     m : array-like, optional
         Wavenumber vector to interpolate spectra onto
@@ -427,6 +428,9 @@ def shearstrain(
     -----
     Adapted from Jen MacKinnon and Amy Waterhouse.
     """
+    # can we calculate shear?
+    calcsh = False if ladcp_u is None else True
+
     # average lon, lat into one value if they are vectors
     lon = np.nanmean(lon)
     lat = np.nanmean(lat)
@@ -439,17 +443,18 @@ def shearstrain(
     pr = p[ii]
     z = z[ii]
 
-    u, ii = helpers.denan(ladcp_u)
-    v = ladcp_v[ii]
-    dd = ladcp_z[ii]
+    if calcsh:
+        u, ii = helpers.denan(ladcp_u)
+        v = ladcp_v[ii]
+        z_sh = ladcp_z[ii]
 
-    # Calculate shear
-    if ladcp_is_shear is False:
-        uz = helpers.calc_shear(u, dd)
-        vz = helpers.calc_shear(v, dd)
-    else:
-        uz = u
-        vz = v
+        # Calculate shear if necessary
+        if ladcp_is_shear is False:
+            uz = helpers.calc_shear(u, z_sh)
+            vz = helpers.calc_shear(v, z_sh)
+        else:
+            uz = u
+            vz = v
 
     # Create an evenly spaced wavenumber vector if none was provided
     if m is None:
@@ -476,26 +481,25 @@ def shearstrain(
             sa, te, pr, z, lon, lat, bin_width=300
         )
 
-    # Interpolate N2ref to LADCP depths
-    N2ref_adcp = interp1d(z_st, N2ref, bounds_error=False)(dd)
-
     # Buoyancy-normalize shear
-    shear_un = uz / np.real(np.sqrt(N2ref_adcp))
-    shear_vn = vz / np.real(np.sqrt(N2ref_adcp))
-    shearn = shear_un + 1j * shear_vn
-    z_sh = dd.copy()
+    if calcsh:
+        N2ref_adcp = interp1d(z_st, N2ref, bounds_error=False)(z_sh)
+        shear_un = uz / np.real(np.sqrt(N2ref_adcp))
+        shear_vn = vz / np.real(np.sqrt(N2ref_adcp))
+        shearn = shear_un + 1j * shear_vn
 
     # Remove nan in shear, strain
-    iin = np.isfinite(shearn)
-    shearn = shearn[iin]
-    z_sh = z_sh[iin]
-    N2ref_adcp = N2ref_adcp[iin]
+    if calcsh:
+        iin = np.isfinite(shearn)
+        shearn = shearn[iin]
+        z_sh = z_sh[iin]
+        N2ref_adcp = N2ref_adcp[iin]
 
     iin = np.isfinite(strain)
     strain = strain[iin]
     z_st = z_st[iin]
 
-    N2 = N2ref_adcp
+    N2 = N2ref[iin]
 
     # Convert wavenumber integration range to np.array in case it is something
     # else:
@@ -521,23 +525,22 @@ def shearstrain(
 
     for iwin, zi in enumerate(z_bin):
         zw = z_bin[iwin]
-        iz = (z_sh >= (zw - delz)) & (z_sh <= (zw + delz))
-        Nm = np.sqrt(np.nanmean(N2[iz]))
-        Nmean[iwin] = Nm
 
         # Shear spectra
-        ig = ~np.isnan(shearn[iz])
-        if ig.size > 10:
-            dz = np.mean(np.diff(z_sh))
-            _, _, Ptot, m0 = helpers.psd(shearn[iz], dz, ffttype="t", detrend=True)
-            # Compensation for first differencing
-            H = np.sinc(m0 * dz / 2 / np.pi) ** 2
-            Ptot = Ptot / H
-            Ptot_sh = interp1d(m0, Ptot, bounds_error=False)(m)
-            P_shear[iwin, :] = Ptot_sh
-        else:
-            P_shear[iwin, :] = np.nan
-            Ptot_sh = np.zeros_like(m) * np.nan
+        if calcsh:
+            iz = (z_sh >= (zw - delz)) & (z_sh <= (zw + delz))
+            ig = ~np.isnan(shearn[iz])
+            if ig.size > 10:
+                dz = np.mean(np.diff(z_sh))
+                _, _, Ptot, m0 = helpers.psd(shearn[iz], dz, ffttype="t", detrend=True)
+                # Compensation for first differencing
+                H = np.sinc(m0 * dz / 2 / np.pi) ** 2
+                Ptot = Ptot / H
+                Ptot_sh = interp1d(m0, Ptot, bounds_error=False)(m)
+                P_shear[iwin, :] = Ptot_sh
+            else:
+                P_shear[iwin, :] = np.nan
+                Ptot_sh = np.zeros_like(m) * np.nan
 
         # Strain spectra
         iz = (z_st >= (zw - delz)) & (z_st <= (zw + delz))
@@ -554,44 +557,51 @@ def shearstrain(
             P_strain[iwin, :] = np.nan
             Ptot_st = np.zeros_like(m) * np.nan
 
+        # Mean stratification per segment
+        Nm = np.sqrt(np.nanmean(N2[iz]))
+        Nmean[iwin] = Nm
+
         # Shear cutoff wavenumber
-        iimsh, Mmax_sh[iwin] = find_cutoff_wavenumber(
-            Ptot_sh[m_include_sh], m[m_include_sh], sh_integration_limit
-        )
+        if calcsh:
+            iimsh, Mmax_sh[iwin] = find_cutoff_wavenumber(
+                Ptot_sh[m_include_sh], m[m_include_sh], sh_integration_limit
+            )
 
         # Strain cutoff wavenumber
         iimst, Mmax_st[iwin] = find_cutoff_wavenumber(
             Ptot_st[m_include_st], m[m_include_st], st_integration_limit
         )
 
-        # Integrate shear spectrum to obtain shear variance
-        Ssh = np.trapz(Ptot_sh[iimsh], m[iimsh])
-        # GM shear variance
-        Sshgm, Pshgm = gm_shear_variance(m, iimsh, Nm)
+        if calcsh:
+            # Integrate shear spectrum to obtain shear variance
+            Ssh = np.trapz(Ptot_sh[iimsh], m[iimsh])
+            # GM shear variance
+            Sshgm, Pshgm = gm_shear_variance(m, iimsh, Nm)
 
         # Integrate strain spectrum to obtain strain variance
         Sst = np.trapz(Ptot_st[iimst], m[iimst])
         # GM strain variance
         Sstgm, Pstgm = gm_strain_variance(m, iimst, Nm)
 
-        # Shear/strain ratio normalized by GM. Factor 3 corrects for the ratio
-        # of GM shear to strain = 3 N^2.
-        Rw = 3 * (Ssh / Sshgm) / (Sst / Sstgm)
-        Rwtot[iwin] = Rw
-        # Avoid negative square roots in hRw below
-        Rw = 1.01 if Rw < 1.01 else Rw
+        if calcsh:
+            # Shear/strain ratio normalized by GM. Factor 3 corrects for the ratio
+            # of GM shear to strain = 3 N^2.
+            Rw = 3 * (Ssh / Sshgm) / (Sst / Sstgm)
+            Rwtot[iwin] = Rw
+            # Avoid negative square roots in hRw below
+            Rw = 1.01 if Rw < 1.01 else Rw
 
-        # Shear/strain parameterization
-        hRw = 3 * (Rw + 1) / (2 * np.sqrt(2) * Rw * np.sqrt(Rw - 1))
-        krho_shst[iwin] = (
-            K0 * (Ssh ** 2 / Sshgm ** 2) * (hRw * latitude_correction(f, Nm))
-        )
-        eps_shst[iwin] = (
-            eps0
-            * (Nm ** 2 / N0 ** 2)
-            * (Ssh ** 2 / Sshgm ** 2)
-            * (hRw * latitude_correction(f, Nm))
-        )
+            # Shear/strain parameterization
+            hRw = 3 * (Rw + 1) / (2 * np.sqrt(2) * Rw * np.sqrt(Rw - 1))
+            krho_shst[iwin] = (
+                K0 * (Ssh ** 2 / Sshgm ** 2) * (hRw * latitude_correction(f, Nm))
+            )
+            eps_shst[iwin] = (
+                eps0
+                * (Nm ** 2 / N0 ** 2)
+                * (Ssh ** 2 / Sshgm ** 2)
+                * (hRw * latitude_correction(f, Nm))
+            )
 
         # Strain only parameterization
         # Use assumed shear/strain ratio of 3
