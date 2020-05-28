@@ -14,7 +14,7 @@ def test_nan_shearstrain(ctd_profile, ladcp_profile, smooth):
     # their size (300m) is double the spacing here (150m).
     window_size = 300
     dz = window_size / 2
-    zbin = np.linspace(dz, dz * 40, num=40)
+    depth_bin = np.linspace(dz, dz * 40, num=40)
     # Wavenumber vector. Starts at wavenumber corresponding to window size.
     m = np.arange(
         start=2 * np.pi / window_size, stop=2 * np.pi / 10, step=2 * np.pi / window_size
@@ -25,17 +25,16 @@ def test_nan_shearstrain(ctd_profile, ladcp_profile, smooth):
     m_include_st = list(range(1, 10))
 
     (eps_shst, krho_shst, diag,) = shearstrain.nan_shearstrain(
-        ctd_profile["s"],
-        ctd_profile["t"],
-        ctd_profile["p"],
         ctd_profile["z"],
-        ctd_profile["lat"],
+        ctd_profile["t"],
+        ctd_profile["s"],
         ctd_profile["lon"],
+        ctd_profile["lat"],
         ladcp_profile["uz"],
         ladcp_profile["vz"],
         ladcp_profile["z"],
         m=m,
-        z_bin=zbin,
+        depth_bin=depth_bin,
         m_include_sh=m_include_sh,
         m_include_st=m_include_st,
         ladcp_is_shear=True,
@@ -51,10 +50,9 @@ def test_nan_shearstrain(ctd_profile, ladcp_profile, smooth):
 def test_shearstrain(ctd_profile, ladcp_profile):
     ctd = ctd_profile
     notnan = nonan(ctd)
-    p = ctd["p"][notnan]
-    z = ctd["z"][notnan]
+    depth = ctd["z"][notnan]
     t = ctd["t"][notnan]
-    s = ctd["s"][notnan]
+    SP = ctd["s"][notnan]
     lon = ctd["lon"][0]
     lat = ctd["lat"][0]
     ladcp = ladcp_profile
@@ -67,7 +65,7 @@ def test_shearstrain(ctd_profile, ladcp_profile):
     # their size (300m) is double the spacing here (150m).
     window_size = 300
     dz = window_size / 2
-    zbin = np.linspace(dz, dz * 40, num=40)
+    depth_bin = np.linspace(dz, dz * 40, num=40)
     # Wavenumber vector. Starts at wavenumber corresponding to window size.
     m = np.arange(
         start=2 * np.pi / window_size, stop=2 * np.pi / 10, step=2 * np.pi / window_size
@@ -78,17 +76,16 @@ def test_shearstrain(ctd_profile, ladcp_profile):
     m_include_st = list(range(1, 10))
 
     (eps_shst, krho_shst, diag,) = shearstrain.shearstrain(
-        s,
+        depth,
         t,
-        p,
-        z,
-        lat,
+        SP,
         lon,
+        lat,
         uz,
         vz,
         zz,
         m=m,
-        z_bin=zbin,
+        depth_bin=depth_bin,
         m_include_sh=m_include_sh,
         m_include_st=m_include_st,
         ladcp_is_shear=True,

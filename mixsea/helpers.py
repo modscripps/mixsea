@@ -10,11 +10,27 @@ def denan(data):
     return data[ii], ii
 
 
-def calc_shear(u, z):
+def calc_shear(u, depth):
+    """Calculate vertical shear from velocity data.
+
+    Parameters
+    ----------
+    u : array-like
+        Velocity data.
+    depth : array-like
+        Depth vector.
+
+    Returns
+    -------
+    array-like
+        Vertical shear at depths of `depth`.
+    """
     f = interp1d(
-        z[0:-1] + np.diff(z[:2]) / 2, np.diff(u) / np.diff(z), bounds_error=False
+        depth[0:-1] + np.diff(depth[:2]) / 2,
+        np.diff(u) / np.diff(depth),
+        bounds_error=False,
     )
-    return f(z)
+    return f(depth)
 
 
 def extrapolate_data(data):
