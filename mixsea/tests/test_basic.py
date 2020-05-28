@@ -8,4 +8,4 @@ def test_ctd(ctd_profile):
 
 # Use the ladcp profile defined as a fixture in conftest.py
 def test_ladcp(ladcp_profile):
-    assert np.mean(ladcp_profile["z"]) > 0
+    assert np.mean(ladcp_profile["depth"]) > 0

@@ -25,14 +25,14 @@ def test_nan_shearstrain(ctd_profile, ladcp_profile, smooth):
     m_include_st = list(range(1, 10))
 
     (eps_shst, krho_shst, diag,) = shearstrain.nan_shearstrain(
-        ctd_profile["z"],
+        ctd_profile["depth"],
         ctd_profile["t"],
-        ctd_profile["s"],
+        ctd_profile["SP"],
         ctd_profile["lon"],
         ctd_profile["lat"],
         ladcp_profile["uz"],
         ladcp_profile["vz"],
-        ladcp_profile["z"],
+        ladcp_profile["depth"],
         m=m,
         depth_bin=depth_bin,
         m_include_sh=m_include_sh,
@@ -50,16 +50,16 @@ def test_nan_shearstrain(ctd_profile, ladcp_profile, smooth):
 def test_shearstrain(ctd_profile, ladcp_profile):
     ctd = ctd_profile
     notnan = nonan(ctd)
-    depth = ctd["z"][notnan]
+    depth = ctd["depth"][notnan]
     t = ctd["t"][notnan]
-    SP = ctd["s"][notnan]
+    SP = ctd["SP"][notnan]
     lon = ctd["lon"][0]
     lat = ctd["lat"][0]
     ladcp = ladcp_profile
     notnan = nonan(ladcp)
     uz = ladcp["uz"][notnan]
     vz = ladcp["vz"][notnan]
-    zz = ladcp["z"][notnan]
+    zz = ladcp["depth"][notnan]
 
     # Center points of depth windows. Windows are half overlapping, i.e.
     # their size (300m) is double the spacing here (150m).

@@ -4,8 +4,9 @@ Contents
 --------
 
 * :doc:`installation`
-* :doc:`usage`
-* :doc:`tutorialnb`
+* :doc:`getting_started`
+* :doc:`thorpe_scales`
+* :doc:`shearstrain`
 * :doc:`api`
 * :doc:`contributing`
 * :doc:`authors`
@@ -18,11 +19,9 @@ Contents
    :caption: Contents:
 
    installation
-   usage
-   tutorialnb
-   thorpe_detailed_look
-   intermediate_profile_example
-   shearstrain_details
+   getting_started
+   thorpe_scales
+   shearstrain
    api
    contributing
    authors
