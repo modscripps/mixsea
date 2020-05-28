@@ -320,6 +320,69 @@ def gm_strain_variance(m, iim, N):
     return Sgm, Pgm
 
 
+def nan_shearstrain(
+    s, t, p, z, lat, lon, ladcp_u=None, ladcp_v=None, ladcp_z=None, **kwargs
+):
+    """Compute krho and epsilon via shear/strain parameterization. Wrapper for
+    `shearstrain` that attempts to deal with NaN values in the input data.
+
+    See `shearstrain` for details.
+    """
+    s = np.asarray(s)
+    t = np.asarray(t)
+    p = np.asarray(p)
+    z = np.asarray(z)
+
+    # Look for NaNs in CTD.
+    notnan = np.isfinite(s) & np.isfinite(t) & np.isfinite(p) & np.isfinite(z)
+    isnan = ~notnan
+
+    # Look for NaNs in shear/velocity. These do not determine the output shape,
+    # therefore we can just get rid of the NaNs inside `kwargs`.
+    if ladcp_u is not None:
+        notnansh = np.isfinite(ladcp_u) & np.isfinite(ladcp_v) & np.isfinite(ladcp_z)
+        isnansh = ~notnansh
+        if isnansh.sum() > 0:
+            ladcp_u = ladcp_u[notnansh]
+            ladcp_v = ladcp_v[notnansh]
+            ladcp_z = ladcp_z[notnansh]
+
+    if isnan.sum() == 0:  # If there are no NaNs in CTD data then return.
+        return shearstrain(s, t, p, z, lat, lon, ladcp_u, ladcp_v, ladcp_z, **kwargs)
+
+    # Don't want to pass return_diagnostics twice.
+    if "return_diagnostics" in kwargs:
+        return_diagnostics = kwargs.pop("return_diagnostics")
+    else:
+        return_diagnostics = False
+
+    eps_shst, krho_shst, diag = shearstrain(
+        s[notnan],
+        t[notnan],
+        p[notnan],
+        z[notnan],
+        lat,
+        lon,
+        ladcp_u,
+        ladcp_v,
+        ladcp_z,
+        return_diagnostics=True,
+        **kwargs,
+    )
+
+    if return_diagnostics:
+        #        # Replace nans in diagnostics if the size and shape seems right:
+        #        Nnotnans = notnan.sum()
+        #        for key in diag:
+        #            if (np.size(diag[key]) == Nnotnans) & (np.ndim(diag[key]) == 1):
+        #                ar = np.full_like(depth, np.nan)
+        #                ar[notnan] = diag[key]
+        #                diag[key] = ar  # This will wipe out the old item.
+        return eps_shst, krho_shst, diag
+    else:
+        return eps_shst, krho_shst
+
+
 def shearstrain(
     s,
     t,
@@ -428,25 +491,45 @@ def shearstrain(
     -----
     Adapted from Jen MacKinnon and Amy Waterhouse.
     """
-    # can we calculate shear?
+    # Can we work with velocity data?
     calcsh = False if ladcp_u is None else True
 
-    # average lon, lat into one value if they are vectors
+    s = np.asarray(s)
+    t = np.asarray(t)
+    p = np.asarray(p)
+    z = np.asarray(z)
+
+    # Make sure there are no NaNs in the input data
+    notnan = np.isfinite(s) & np.isfinite(t) & np.isfinite(p) & np.isfinite(z)
+    isnan = ~notnan
+    if not isnan.sum() == 0:
+        raise ValueError(
+            "No NaNs allowed in CTD data. Consider using `nan_shearstrain` instead."
+        )
+    if calcsh:
+        notnansh = np.isfinite(ladcp_u) & np.isfinite(ladcp_v) & np.isfinite(ladcp_z)
+        isnansh = ~notnansh
+        if not isnansh.sum() == 0:
+            raise ValueError(
+                "No NaNs allowed in LADCP data. Consider using `nan_shearstrain` instead."
+            )
+
+    # Average lon, lat into one value if they are vectors.
     lon = np.nanmean(lon)
     lat = np.nanmean(lat)
 
     # Coriolis parameter for this latitude
     f = np.absolute(gsw.f(lat))
 
-    sa, ii = helpers.denan(s)
-    te = t[ii]
-    pr = p[ii]
-    z = z[ii]
+    sa = s
+    te = t
+    pr = p
+    z = z
 
     if calcsh:
-        u, ii = helpers.denan(ladcp_u)
-        v = ladcp_v[ii]
-        z_sh = ladcp_z[ii]
+        u = ladcp_u
+        v = ladcp_v
+        z_sh = ladcp_z
 
         # Calculate shear if necessary
         if ladcp_is_shear is False:
@@ -522,6 +605,8 @@ def shearstrain(
     eps_shst = np.full(nz, np.nan)
     eps_st = np.full(nz, np.nan)
     Nmean = np.full(nz, np.nan)
+    Int_st = np.full(nz, np.nan)
+    Int_sh = np.full(nz, np.nan)
 
     for iwin, zi in enumerate(z_bin):
         zw = z_bin[iwin]
@@ -575,11 +660,13 @@ def shearstrain(
         if calcsh:
             # Integrate shear spectrum to obtain shear variance
             Ssh = np.trapz(Ptot_sh[iimsh], m[iimsh])
+            Int_sh[iwin] = Ssh
             # GM shear variance
             Sshgm, Pshgm = gm_shear_variance(m, iimsh, Nm)
 
         # Integrate strain spectrum to obtain strain variance
         Sst = np.trapz(Ptot_st[iimst], m[iimst])
+        Int_st[iwin] = Sst
         # GM strain variance
         Sstgm, Pstgm = gm_strain_variance(m, iimst, Nm)
 
@@ -629,6 +716,10 @@ def shearstrain(
             m=m,
             z_bin=z_bin,
             Nmean=Nmean,
+            strain=strain,
+            z_st=z_st,
+            Int_sh=Int_sh,
+            Int_st=Int_st,
         )
         return eps_shst, krho_shst, diag
     else:
