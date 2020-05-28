@@ -9,7 +9,7 @@ def nan_eps_overturn(
     lon,
     lat,
     dnoise=5e-4,
-    alpha_sq=0.9,
+    alpha=0.95,
     Roc=0.2,
     background_eps=np.nan,
     use_ip=True,
@@ -35,9 +35,8 @@ def nan_eps_overturn(
         Latitude of observation
     dnoise : float, optional
         Noise level of density [kg/m^3]. Default is 5e-4.
-    alpha_sq : float, optional
-        Square of proportionality constant between Thorpe and Ozmidov scale.
-        Default is 0.9.
+    alpha : float, optional
+        Constant of proportionality between Thorpe and Ozmidov scale. Default is 0.95.
     Roc : float, optional
         Critical value of the overturn ratio Ro. An overturn will be considered
         noise if Ro < Roc.
@@ -87,7 +86,7 @@ def nan_eps_overturn(
             lon,
             lat,
             dnoise=dnoise,
-            alpha_sq=alpha_sq,
+            alpha=alpha,
             Roc=Roc,
             background_eps=background_eps,
             use_ip=use_ip,
@@ -106,7 +105,7 @@ def nan_eps_overturn(
         lon,
         lat,
         dnoise=dnoise,
-        alpha_sq=alpha_sq,
+        alpha=alpha,
         Roc=Roc,
         background_eps=background_eps,
         use_ip=use_ip,
@@ -137,7 +136,7 @@ def eps_overturn(
     lon,
     lat,
     dnoise=5e-4,
-    alpha_sq=0.9,
+    alpha=0.95,
     Roc=0.2,
     background_eps=np.nan,
     use_ip=True,
@@ -164,9 +163,8 @@ def eps_overturn(
         Latitude of observation
     dnoise : float, optional
         Noise level of density [kg/m^3]. Default is 5e-4.
-    alpha_sq : float, optional
-        Square of proportionality constant between Thorpe and Ozmidov scale.
-        Default is 0.9.
+    alpha : float, optional
+        Constant of proportionality between Thorpe and Ozmidov scale. Default is 0.95.
     Roc : float, optional
         Critical value of the overturn ratio Ro. An overturn will be considered
         noise if Ro < Roc.
@@ -275,8 +273,8 @@ def eps_overturn(
         dens = gsw.pot_rho_t_exact(SA, T, P, p_ref=p_refs[idx_bin])
 
         if overturns_from_CT:
-            # Minus sign here because temperature normally decreases towards the bottom
-            # which would mean the whole water column is unstable! Minus fixes that.
+            # Temperature normally decreases towards the bottom which would mean the
+            # find_overturns algorithm thinks the whole water column is unstable! Minus fixes that.
             q = -CT
         else:
             q = dens
@@ -412,7 +410,9 @@ def eps_overturn(
 
     # Finally calculate epsilon for diagnostics, avoid nans, inf and negative n2.
     isgood = np.isfinite(diag["n2"]) & np.isfinite(diag["Lt"]) & ~diag["n2_flag"]
-    diag["eps"][isgood] = alpha_sq * diag["Lt"][isgood] ** 2 * diag["n2"][isgood] ** 1.5
+    diag["eps"][isgood] = (
+        alpha ** 2 * diag["Lt"][isgood] ** 2 * diag["n2"][isgood] ** 1.5
+    )
 
     # Use flags to get rid of bad overturns in basic output
     isbad = diag["noise_flag"] | diag["n2_flag"] | diag["Ro_flag"]
