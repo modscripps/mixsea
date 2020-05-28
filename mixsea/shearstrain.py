@@ -30,7 +30,7 @@ def wavenumber_vector(w):
 
 def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, dz):
     """
-    Calculate strain with a smooth N^2 profile from polynomial fits to windowed data.
+    Calculate strain with a smooth :math:`N^2` profile from polynomial fits to windowed data.
 
     Parameters
     ----------
@@ -56,7 +56,7 @@ def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, dz):
     depth_st : array-like
         Depth vector for `strain`.
     N2ref : array-like
-        Smooth N^2 profile.
+        Smooth :math:`N^2` profile.
     """
     p = gsw.p_from_z(-depth, lat)
     SA = gsw.SA_from_SP(SP, p, lon, lat)
@@ -88,7 +88,7 @@ def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, dz):
 
 def strain_adiabatic_leveling(depth, t, SP, lon, lat, bin_width):
     """
-    Calculate strain with a smooth N^2 profile based on the adiabatic leveling method.
+    Calculate strain with a smooth :math:`N^2` profile based on the adiabatic leveling method.
 
     Parameters
     ----------
@@ -110,7 +110,7 @@ def strain_adiabatic_leveling(depth, t, SP, lon, lat, bin_width):
     depth_st : array-like
         Depth vector for `strain`.
     N2ref : array-like
-        Smooth N^2 profile.
+        Smooth :math:`N^2` profile.
     """
     p = gsw.p_from_z(-depth, lat)
     N2ref = nsq.adiabatic_leveling(
@@ -321,8 +321,7 @@ def gm_strain_variance(m, iim, N):
 def nan_shearstrain(
     depth, t, SP, lon, lat, ladcp_u=None, ladcp_v=None, ladcp_depth=None, **kwargs
 ):
-    """Compute krho and epsilon via shear/strain parameterization. Wrapper for
-    `shearstrain` that attempts to deal with NaN values in the input data.
+    """Compute krho and epsilon via shear/strain parameterization attempting to deal NaN values in the input data.
 
     See `shearstrain` for details.
     """

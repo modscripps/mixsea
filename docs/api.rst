@@ -15,6 +15,7 @@ Overturn-based parameterization
     :toctree: generated/
 
     overturn.eps_overturn
+    overturn.nan_eps_overturn
 
 Shear/strain-based parameterization
 ===================================
@@ -23,6 +24,7 @@ Shear/strain-based parameterization
     :toctree: generated/
 
     shearstrain.shearstrain
+    shearstrain.nan_shearstrain
     shearstrain.wavenumber_vector
     shearstrain.latitude_correction
     shearstrain.strain_polynomial_fits
