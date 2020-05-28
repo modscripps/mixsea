@@ -273,7 +273,7 @@ def eps_overturn(
         dens = gsw.pot_rho_t_exact(SA, T, P, p_ref=p_refs[idx_bin])
 
         if overturns_from_CT:
-            # Temperature normally decreases towards the bottom which would mean the 
+            # Temperature normally decreases towards the bottom which would mean the
             # find_overturns algorithm thinks the whole water column is unstable! Minus fixes that.
             q = -CT
         else:
@@ -410,7 +410,9 @@ def eps_overturn(
 
     # Finally calculate epsilon for diagnostics, avoid nans, inf and negative n2.
     isgood = np.isfinite(diag["n2"]) & np.isfinite(diag["Lt"]) & ~diag["n2_flag"]
-    diag["eps"][isgood] = alpha**2 * diag["Lt"][isgood] ** 2 * diag["n2"][isgood] ** 1.5
+    diag["eps"][isgood] = (
+        alpha ** 2 * diag["Lt"][isgood] ** 2 * diag["n2"][isgood] ** 1.5
+    )
 
     # Use flags to get rid of bad overturns in basic output
     isbad = diag["noise_flag"] | diag["n2_flag"] | diag["Ro_flag"]
