@@ -18,9 +18,9 @@ def nan_eps_overturn(
 
     # Find non-NaNs
     if SP.size == 1:
-        notnan = np.isfinite(depth) & np.isfinite(t)
-    else:
-        notnan = np.isfinite(depth) & np.isfinite(t) & np.isfinite(SP)
+        SP = np.full_like(depth, SP)
+
+    notnan = np.isfinite(depth) & np.isfinite(t) & np.isfinite(SP)
 
     isnan = ~notnan
     if isnan.sum() == 0:  # If there are no NaNs then return.
