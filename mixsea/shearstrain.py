@@ -28,25 +28,23 @@ def wavenumber_vector(w):
     return np.arange(2 * np.pi / w, 2 * np.pi / 10, 2 * np.pi / w)
 
 
-def strain_polynomial_fits(s, t, p, z, lon, lat, zbin, dz):
+def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, dz):
     """
     Calculate strain with a smooth N^2 profile from polynomial fits to windowed data.
 
     Parameters
     ----------
-    s : array-like
-        CTD salinity [psu]
+    depth : array-like
+        CTD depth [m]
     t : array-like
         CTD in-situ temperature [ITS-90, degrees C]
-    p : array-like
-        CTD pressure [dbar]
-    z : array-like
-        CTD depth [m]
-    lat : array-like or float
-        Latitude
+    SP : array-like
+        CTD practical salinity [psu]
     lon : array-like or float
         Longitude
-    zbin : float
+    lat : array-like or float
+        Latitude
+    depth_bin : float
         Window centers
     dz : float
         Window size
@@ -55,19 +53,20 @@ def strain_polynomial_fits(s, t, p, z, lon, lat, zbin, dz):
     -------
     strain : array-like
         Strain profile.
-    z_st : array-like
+    depth_st : array-like
         Depth vector for `strain`.
     N2ref : array-like
         Smooth N^2 profile.
     """
-    SA = gsw.SA_from_SP(s, p, lon, lat)
+    p = gsw.p_from_z(-depth, lat)
+    SA = gsw.SA_from_SP(SP, p, lon, lat)
     CT = gsw.CT_from_t(SA, t, p)
     N2, Pbar = gsw.Nsquared(SA, CT, p, lat=lat)
     Zbar = -1 * gsw.z_from_p(Pbar, lat)
     isN = np.isfinite(N2)
     n2polyfit = np.zeros(N2.shape) * np.nan
     n2polyfit_mean = n2polyfit.copy()
-    for iwin, zw in enumerate(zbin):
+    for iwin, zw in enumerate(depth_bin):
         ij = (Zbar >= (zw - dz)) & (Zbar < (zw + dz))
         ij2 = (Zbar >= (zw - dz / 2)) & (Zbar < (zw + dz / 2))
         ij = ij * isN
@@ -80,44 +79,43 @@ def strain_polynomial_fits(s, t, p, z, lon, lat, zbin, dz):
     n2polyfit = helpers.extrapolate_data(n2polyfit)
     # Calculate strain
     strain = (N2 - n2polyfit) / n2polyfit_mean
-    z_st = z[:-1] + np.diff(z[:2] / 2)
+    depth_st = depth[:-1] + np.diff(depth[:2] / 2)
     # N2ref = n2polyfit_mean
-    N2ref = interp1d(Zbar, n2polyfit_mean, bounds_error=False)(z_st)
-    strain = interp1d(Zbar, strain, bounds_error=False)(z_st)
-    return strain, z_st, N2ref
+    N2ref = interp1d(Zbar, n2polyfit_mean, bounds_error=False)(depth_st)
+    strain = interp1d(Zbar, strain, bounds_error=False)(depth_st)
+    return strain, depth_st, N2ref
 
 
-def strain_adiabatic_leveling(s, t, p, z, lon, lat, bin_width):
+def strain_adiabatic_leveling(depth, t, SP, lon, lat, bin_width):
     """
     Calculate strain with a smooth N^2 profile based on the adiabatic leveling method.
 
     Parameters
     ----------
-    s : array-like
-        CTD salinity [psu]
+    depth : array-like
+        CTD depth [m]
     t : array-like
         CTD in-situ temperature [ITS-90, degrees C]
-    p : array-like
-        CTD pressure [dbar]
-    z : array-like
-        CTD depth [m]
-    lat : array-like or float
-        Latitude
+    SP : array-like
+        CTD practical salinity [psu]
     lon : array-like or float
         Longitude
+    lat : array-like or float
+        Latitude
 
     Returns
     -------
     strain : array-like
         Strain profile.
-    z_st : array-like
+    depth_st : array-like
         Depth vector for `strain`.
     N2ref : array-like
         Smooth N^2 profile.
     """
+    p = gsw.p_from_z(-depth, lat)
     N2ref = nsq.adiabatic_leveling(
         p,
-        s,
+        SP,
         t,
         lon,
         lat,
@@ -127,15 +125,15 @@ def strain_adiabatic_leveling(s, t, p, z, lon, lat, bin_width):
         cap="both",
     )
     # N2ref = interp1d(z, N2ref)()
-    SA = gsw.SA_from_SP(s, p, lon, lat)
+    SA = gsw.SA_from_SP(SP, p, lon, lat)
     CT = gsw.CT_from_t(SA, t, p)
     N2, Pbar = gsw.Nsquared(SA, CT, p, lat=lat)
     Zbar = -1 * gsw.z_from_p(Pbar, lat)
     N2ref = interp1d(p, N2ref)(Pbar)
     strain = (N2 - N2ref) / N2ref
-    z_st = z[:-1] + np.diff(z[:2] / 2)
-    strain = interp1d(Zbar, strain, bounds_error=False)(z_st)
-    return strain, z_st, N2ref
+    depth_st = depth[:-1] + np.diff(depth[:2] / 2)
+    strain = interp1d(Zbar, strain, bounds_error=False)(depth_st)
+    return strain, depth_st, N2ref
 
 
 def find_cutoff_wavenumber(P, m, integration_limit, lambda_min=5):
@@ -321,34 +319,37 @@ def gm_strain_variance(m, iim, N):
 
 
 def nan_shearstrain(
-    s, t, p, z, lat, lon, ladcp_u=None, ladcp_v=None, ladcp_z=None, **kwargs
+    depth, t, SP, lon, lat, ladcp_u=None, ladcp_v=None, ladcp_depth=None, **kwargs
 ):
     """Compute krho and epsilon via shear/strain parameterization. Wrapper for
     `shearstrain` that attempts to deal with NaN values in the input data.
 
     See `shearstrain` for details.
     """
-    s = np.asarray(s)
+    depth = np.asarray(depth)
     t = np.asarray(t)
-    p = np.asarray(p)
-    z = np.asarray(z)
+    SP = np.asarray(SP)
 
     # Look for NaNs in CTD.
-    notnan = np.isfinite(s) & np.isfinite(t) & np.isfinite(p) & np.isfinite(z)
+    notnan = np.isfinite(SP) & np.isfinite(t) & np.isfinite(depth)
     isnan = ~notnan
 
     # Look for NaNs in shear/velocity. These do not determine the output shape,
     # therefore we can just get rid of the NaNs inside `kwargs`.
     if ladcp_u is not None:
-        notnansh = np.isfinite(ladcp_u) & np.isfinite(ladcp_v) & np.isfinite(ladcp_z)
+        notnansh = (
+            np.isfinite(ladcp_u) & np.isfinite(ladcp_v) & np.isfinite(ladcp_depth)
+        )
         isnansh = ~notnansh
         if isnansh.sum() > 0:
             ladcp_u = ladcp_u[notnansh]
             ladcp_v = ladcp_v[notnansh]
-            ladcp_z = ladcp_z[notnansh]
+            ladcp_depth = ladcp_depth[notnansh]
 
     if isnan.sum() == 0:  # If there are no NaNs in CTD data then return.
-        return shearstrain(s, t, p, z, lat, lon, ladcp_u, ladcp_v, ladcp_z, **kwargs)
+        return shearstrain(
+            depth, t, SP, lon, lat, ladcp_u, ladcp_v, ladcp_depth, **kwargs
+        )
 
     # Don't want to pass return_diagnostics twice.
     if "return_diagnostics" in kwargs:
@@ -357,44 +358,35 @@ def nan_shearstrain(
         return_diagnostics = False
 
     eps_shst, krho_shst, diag = shearstrain(
-        s[notnan],
+        depth[notnan],
         t[notnan],
-        p[notnan],
-        z[notnan],
-        lat,
+        SP[notnan],
         lon,
+        lat,
         ladcp_u,
         ladcp_v,
-        ladcp_z,
+        ladcp_depth,
         return_diagnostics=True,
         **kwargs,
     )
 
     if return_diagnostics:
-        #        # Replace nans in diagnostics if the size and shape seems right:
-        #        Nnotnans = notnan.sum()
-        #        for key in diag:
-        #            if (np.size(diag[key]) == Nnotnans) & (np.ndim(diag[key]) == 1):
-        #                ar = np.full_like(depth, np.nan)
-        #                ar[notnan] = diag[key]
-        #                diag[key] = ar  # This will wipe out the old item.
         return eps_shst, krho_shst, diag
     else:
         return eps_shst, krho_shst
 
 
 def shearstrain(
-    s,
+    depth,
     t,
-    p,
-    z,
-    lat,
+    SP,
     lon,
+    lat,
     ladcp_u=None,
     ladcp_v=None,
-    ladcp_z=None,
+    ladcp_depth=None,
     m=None,
-    z_bin=None,
+    depth_bin=None,
     m_include_sh=np.arange(4),
     m_include_st=np.arange(4),
     ladcp_is_shear=False,
@@ -408,30 +400,28 @@ def shearstrain(
 
     Parameters
     ----------
-    s : array-like
-        CTD salinity [psu]
+    depth : array-like
+        CTD depth [m]
     t : array-like
         CTD in-situ temperature [ITS-90, degrees C]
-    p : array-like
-        CTD pressure [dbar]
-    z : array-like
-        CTD depth [m]
-    lat : array-like or float
-        Latitude
+    SP : array-like
+        CTD practical salinity [psu]
     lon : array-like or float
         Longitude
+    lat : array-like or float
+        Latitude
     ladcp_u : array-like, optional
         LADCP velocity east-west component [m/s]. If not provided, only the
         strain solution with a fixed shear/strain ratio of 3 will be computed.
     ladcp_v : array-like, optional
         LADCP velocity north-south component [m/s]
-    ladcp_z : array-like, optional
+    ladcp_depth : array-like, optional
         LADCP depth vector [m]
     m : array-like, optional
         Wavenumber vector to interpolate spectra onto
-    z_bin : array-like, optional
+    depth_bin : array-like, optional
         Centers of windows over which spectra are computed. Defaults to
-        np.arange(75, max(z), 150). Note that windows are half-overlapping so
+        np.arange(75, max(depth), 150). Note that windows are half-overlapping so
         the 150 spacing above means each window is 300 m tall.
     m_include_sh : array-like, optional
         Wavenumber integration range for shear spectra. Array must consist of
@@ -482,7 +472,7 @@ def shearstrain(
             Epsilon calculated from strain only (`array-like`).
         ``"m"``
             Wavenumber vector (`array-like`).
-        ``"z_bin"``
+        ``"depth_bin"``
             Center points of depth windows (`array-like`).
         ``"Nmean"``
             Average N per depth window calculated as root-mean from N^2(`array-like`).
@@ -491,82 +481,81 @@ def shearstrain(
     -----
     Adapted from Jen MacKinnon and Amy Waterhouse.
     """
-    # Can we work with velocity data?
-    calcsh = False if ladcp_u is None else True
+    # Average lon, lat into one value if they are vectors.
+    lon = np.nanmean(lon)
+    lat = np.nanmean(lat)
 
-    s = np.asarray(s)
+    depth = np.asarray(depth)
     t = np.asarray(t)
-    p = np.asarray(p)
-    z = np.asarray(z)
+    SP = np.asarray(SP)
 
     # Make sure there are no NaNs in the input data
-    notnan = np.isfinite(s) & np.isfinite(t) & np.isfinite(p) & np.isfinite(z)
+    notnan = np.isfinite(SP) & np.isfinite(t) & np.isfinite(depth)
     isnan = ~notnan
     if not isnan.sum() == 0:
         raise ValueError(
             "No NaNs allowed in CTD data. Consider using `nan_shearstrain` instead."
         )
+
+    # Can we work with velocity data?
+    calcsh = False if ladcp_u is None else True
+
+    # No NaNs in velocity/shear data
     if calcsh:
-        notnansh = np.isfinite(ladcp_u) & np.isfinite(ladcp_v) & np.isfinite(ladcp_z)
+        ladcp_u = np.asarray(ladcp_u)
+        ladcp_v = np.asarray(ladcp_v)
+        ladcp_depth = np.asarray(ladcp_depth)
+        notnansh = (
+            np.isfinite(ladcp_u) & np.isfinite(ladcp_v) & np.isfinite(ladcp_depth)
+        )
         isnansh = ~notnansh
         if not isnansh.sum() == 0:
             raise ValueError(
                 "No NaNs allowed in LADCP data. Consider using `nan_shearstrain` instead."
             )
 
-    # Average lon, lat into one value if they are vectors.
-    lon = np.nanmean(lon)
-    lat = np.nanmean(lat)
-
     # Coriolis parameter for this latitude
     f = np.absolute(gsw.f(lat))
 
-    sa = s
-    te = t
-    pr = p
-    z = z
-
     if calcsh:
-        u = ladcp_u
-        v = ladcp_v
-        z_sh = ladcp_z
+        depth_sh = ladcp_depth
 
         # Calculate shear if necessary
         if ladcp_is_shear is False:
-            uz = helpers.calc_shear(u, z_sh)
-            vz = helpers.calc_shear(v, z_sh)
+            uz = helpers.calc_shear(ladcp_u, depth_sh)
+            vz = helpers.calc_shear(ladcp_v, depth_sh)
         else:
-            uz = u
-            vz = v
+            uz = ladcp_u
+            vz = ladcp_v
 
     # Create an evenly spaced wavenumber vector if none was provided
     if m is None:
         m = wavenumber_vector(w=300)
 
     # Generate depth bin vector if none provided
-    if z_bin is None:
-        z_bin = np.arange(75, np.max(z), 150)
+    if depth_bin is None:
+        depth_bin = np.arange(75, np.max(depth), 150)
     else:
         # cut out any bins that won't hold any data
-        z_bin = z_bin[z_bin < np.max(z)]
-    nz = np.squeeze(z_bin.shape)
-    delz = np.mean(np.diff(z_bin))
+        depth_bin = depth_bin[depth_bin < np.max(depth)]
+    nz = np.squeeze(depth_bin.shape)
+    delz = np.mean(np.diff(depth_bin))
 
     # Calculate a smoothed N^2 profile and strain, either using 2nd order
     # polynomial fits to N^2 for each window (PF) or the adiabatic leveling
     # method (AL).
     if smooth == "PF":
-        strain, z_st, N2ref = strain_polynomial_fits(
-            sa, te, pr, z, lon, lat, z_bin, delz
+        strain, depth_st, N2ref = strain_polynomial_fits(
+            depth, t, SP, lon, lat, depth_bin, delz
         )
     elif smooth == "AL":
-        strain, z_st, N2ref = strain_adiabatic_leveling(
-            sa, te, pr, z, lon, lat, bin_width=300
+        strain, depth_st, N2ref = strain_adiabatic_leveling(
+            depth, t, SP, lon, lat, bin_width=300
         )
 
     # Buoyancy-normalize shear
     if calcsh:
-        N2ref_adcp = interp1d(z_st, N2ref, bounds_error=False)(z_sh)
+        N2ref_adcp = interp1d(depth_st, N2ref, bounds_error=False)(depth_sh)
         shear_un = uz / np.real(np.sqrt(N2ref_adcp))
         shear_vn = vz / np.real(np.sqrt(N2ref_adcp))
         shearn = shear_un + 1j * shear_vn
@@ -575,12 +564,12 @@ def shearstrain(
     if calcsh:
         iin = np.isfinite(shearn)
         shearn = shearn[iin]
-        z_sh = z_sh[iin]
+        depth_sh = depth_sh[iin]
         N2ref_adcp = N2ref_adcp[iin]
 
     iin = np.isfinite(strain)
     strain = strain[iin]
-    z_st = z_st[iin]
+    depth_st = depth_st[iin]
 
     N2 = N2ref[iin]
 
@@ -608,15 +597,15 @@ def shearstrain(
     Int_st = np.full(nz, np.nan)
     Int_sh = np.full(nz, np.nan)
 
-    for iwin, zi in enumerate(z_bin):
-        zw = z_bin[iwin]
+    for iwin, zi in enumerate(depth_bin):
+        zw = depth_bin[iwin]
 
         # Shear spectra
         if calcsh:
-            iz = (z_sh >= (zw - delz)) & (z_sh <= (zw + delz))
+            iz = (depth_sh >= (zw - delz)) & (depth_sh <= (zw + delz))
             ig = ~np.isnan(shearn[iz])
             if ig.size > 10:
-                dz = np.mean(np.diff(z_sh))
+                dz = np.mean(np.diff(depth_sh))
                 _, _, Ptot, m0 = helpers.psd(shearn[iz], dz, ffttype="t", detrend=True)
                 # Compensation for first differencing
                 H = np.sinc(m0 * dz / 2 / np.pi) ** 2
@@ -628,10 +617,10 @@ def shearstrain(
                 Ptot_sh = np.zeros_like(m) * np.nan
 
         # Strain spectra
-        iz = (z_st >= (zw - delz)) & (z_st <= (zw + delz))
+        iz = (depth_st >= (zw - delz)) & (depth_st <= (zw + delz))
         ig = ~np.isnan(strain[iz])
         if ig.size > 10:
-            dz = np.mean(np.diff(z_st))
+            dz = np.mean(np.diff(depth_st))
             _, _, Ptot, m0 = helpers.psd(strain[iz], dz, ffttype="t", detrend=True)
             # Compensation for first differencing
             H = np.sinc(m0 * dz / 2 / np.pi) ** 2
@@ -714,10 +703,10 @@ def shearstrain(
             Mmax_st=Mmax_st,
             Rwtot=Rwtot,
             m=m,
-            z_bin=z_bin,
+            depth_bin=depth_bin,
             Nmean=Nmean,
             strain=strain,
-            z_st=z_st,
+            depth_st=depth_st,
             Int_sh=Int_sh,
             Int_st=Int_st,
         )
