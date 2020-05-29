@@ -58,10 +58,10 @@ def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, dz):
     N2ref : array-like
         Smooth :math:`N^2` profile.
     """
-    p = gsw.p_from_z(-depth, lat)
-    SA = gsw.SA_from_SP(SP, p, lon, lat)
-    CT = gsw.CT_from_t(SA, t, p)
-    N2, Pbar = gsw.Nsquared(SA, CT, p, lat=lat)
+    pr = gsw.p_from_z(-1 * depth, lat)
+    SA = gsw.SA_from_SP(SP, pr, lon, lat)
+    CT = gsw.CT_from_t(SA, t, pr)
+    N2, Pbar = gsw.Nsquared(SA, CT, pr, lat=lat)
     Zbar = -1 * gsw.z_from_p(Pbar, lat)
     isN = np.isfinite(N2)
     n2polyfit = np.zeros(N2.shape) * np.nan
@@ -112,7 +112,7 @@ def strain_adiabatic_leveling(depth, t, SP, lon, lat, bin_width):
     N2ref : array-like
         Smooth :math:`N^2` profile.
     """
-    p = gsw.p_from_z(-depth, lat)
+    p = gsw.p_from_z(-1 * depth, lat)
     N2ref = nsq.adiabatic_leveling(
         p,
         SP,
@@ -392,6 +392,7 @@ def shearstrain(
     smooth="AL",
     sh_integration_limit=0.66,
     st_integration_limit=0.22,
+    window="hamming",
     return_diagnostics=False,
 ):
     """
@@ -437,14 +438,18 @@ def shearstrain(
         `strain_adiabatic_leveling`. 'PF' selects second order polynomial fits
         to the buoyancy frequency in each window as applied in
         `strain_polynomial_fits`. Defaults to the adiabatic leveling method.
-    sh_integration_limit : float
+    sh_integration_limit : float, optional
         Shear variance level for determining integration cutoff wavenumber.
         Defaults to 0.66, compare Gargett (1990) :cite:`Gargett1990` and Gregg
         et al. (2003) :cite:`Gregg2003`.
-    st_integration_limit : float
+    st_integration_limit : float, optional
         Strain variance level for determining integration cutoff wavenumber.
         Defaults to 0.22, compare Gargett (1990) :cite:`Gargett1990` and Gregg
         et al. (2003) :cite:`Gregg2003`.
+    window : str or tuple, optional
+        Window type. Defaults to 'hamming' (which corresponds to a sin square
+        taper as used in various studies. See `scipy.signal.get_window` for
+        details.
     return_diagnostics : bool, optional
         Default is False. If True, this function will return a dictionary
         containing variables such as shear spectra, shear/strain ratios,
@@ -610,7 +615,9 @@ def shearstrain(
             ig = ~np.isnan(shearn[iz])
             if ig.size > 10:
                 dz = np.mean(np.diff(depth_sh))
-                _, _, Ptot, m0 = helpers.psd(shearn[iz], dz, ffttype="t", detrend=True)
+                _, _, Ptot, m0 = helpers.psd(
+                    shearn[iz], dz, ffttype="t", detrend=True, window=window
+                )
                 # Compensation for first differencing
                 H = np.sinc(m0 * dz / 2 / np.pi) ** 2
                 Ptot = Ptot / H
@@ -625,7 +632,9 @@ def shearstrain(
         ig = ~np.isnan(strain[iz])
         if ig.size > 10:
             dz = np.mean(np.diff(depth_st))
-            _, _, Ptot, m0 = helpers.psd(strain[iz], dz, ffttype="t", detrend=True)
+            _, _, Ptot, m0 = helpers.psd(
+                strain[iz], dz, ffttype="t", detrend=True, window=window
+            )
             # Compensation for first differencing
             H = np.sinc(m0 * dz / 2 / np.pi) ** 2
             Ptot = Ptot / H
