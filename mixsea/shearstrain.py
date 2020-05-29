@@ -432,14 +432,19 @@ def shearstrain(
         Indicate whether LADCP data is velocity or shear.
         Defaults to False (velocity).
     smooth : {'AL', 'PF'}, optional
-        Select type of N^2 smoothing and subsequent strain calculation.
-        Defaults to adiabatic leveling.
+        Select type of N^2 smoothing and subsequent strain calculation. 'AL'
+        selects the adiabatic leveling method as applied in
+        `strain_adiabatic_leveling`. 'PF' selects second order polynomial fits
+        to the buoyancy frequency in each window as applied in
+        `strain_polynomial_fits`. Defaults to the adiabatic leveling method.
     sh_integration_limit : float
         Shear variance level for determining integration cutoff wavenumber.
-        Defaults to 0.66, compare Gargett (1990) and Gregg et al. (2003).
+        Defaults to 0.66, compare Gargett (1990) :cite:`Gargett1990` and Gregg
+        et al. (2003) :cite:`Gregg2003`.
     st_integration_limit : float
         Strain variance level for determining integration cutoff wavenumber.
-        Defaults to 0.22, compare Gargett (1990) and Gregg et al. (2003).
+        Defaults to 0.22, compare Gargett (1990) :cite:`Gargett1990` and Gregg
+        et al. (2003) :cite:`Gregg2003`.
     return_diagnostics : bool, optional
         Default is False. If True, this function will return a dictionary
         containing variables such as shear spectra, shear/strain ratios,
