@@ -436,10 +436,10 @@ def shearstrain(
         Defaults to adiabatic leveling.
     sh_integration_limit : float
         Shear variance level for determining integration cutoff wavenumber.
-        Defaults to 0.66, compare Gregg et al. (2003).
+        Defaults to 0.66, compare Gargett (1990) and Gregg et al. (2003).
     st_integration_limit : float
         Strain variance level for determining integration cutoff wavenumber.
-        Defaults to 0.22, compare Gregg et al. (2003).
+        Defaults to 0.22, compare Gargett (1990) and Gregg et al. (2003).
     return_diagnostics : bool, optional
         Default is False. If True, this function will return a dictionary
         containing variables such as shear spectra, shear/strain ratios,
