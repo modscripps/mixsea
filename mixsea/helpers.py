@@ -72,7 +72,7 @@ def psd(
 
         - 'p' for periodic boundary conditions = pure fft (default)
 
-        - 'c' or 's' if the imput is a sum of cosines or sines only in which
+        - 'c' or 's' if the input is a sum of cosines or sines only in which
           case the input is extended evenly or oddly before ffting.
 
         - 't' for time series, or any other non-exactly periodic series in
@@ -168,11 +168,14 @@ def psd(
         )
         # One side of 0 is shifted to negative values - need to shift back
         f0[f0 < 0] = f0[f0 < 0] + 1
-
+        # Since we've shifted the wavenumber near zero to near one, we need to
+        # extend it fully to one for interpolation to work below. Technically,
+        # this should be the same as interpolating from zero to a very small
+        # value.
+        f0[-1] = 1
         Pxx0 = interp1d(f0, Pxx0, bounds_error=False, axis=-1)(f_full)
         Pxx = Pxx0.copy()
         Pxx = Pxx / 2 / np.pi  # normalize by radial wavenumber/frequency
-
     # Separate into cw and ccw spectra
     if np.remainder(M[1], 2) == 0:
         # even lengths, divide 0 and nyquist freq between ccw and cw
