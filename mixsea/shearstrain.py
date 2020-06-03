@@ -28,9 +28,12 @@ def wavenumber_vector(w):
     return np.arange(2 * np.pi / w, 2 * np.pi / 10, 2 * np.pi / w)
 
 
-def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, dz):
+def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, window_size):
     """
     Calculate strain with a smooth :math:`N^2` profile from polynomial fits to windowed data.
+
+    This version outputs polyfit and strain for the whole window as opposed to
+    just half the window centered.
 
     Parameters
     ----------
@@ -46,47 +49,58 @@ def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, dz):
         Latitude
     depth_bin : float
         Window centers
-    dz : float
+    window_size : float
         Window size
 
     Returns
     -------
-    strain : array-like
-        Strain profile.
-    depth_st : array-like
-        Depth vector for `strain`.
-    N2ref : array-like
-        Smooth :math:`N^2` profile.
+    list
+        List with results in a dict for each depth segment. The dict has the following entries:
+        ``"segz"``
+            Segment depth vector (`array-like`).
+        ``"depth_bin"``
+            Segment center depth (`float`).
+        ``"N2"``
+            Segment buoyancy frequency squared (`array-like`).
+        ``"N2smooth"``
+            Segment polynomial fit to buoyancy frequency squared (`array-like`).
+        ``"N2mean"``
+            Segment mean buoyancy frequency squared (`float`).
+        ``"strain"``
+            Segment strain (`array-like`).
     """
+    # Prepare output list. It will hold a dictionary with data for each window.
+    out = []
+    dz = np.absolute(np.median(np.diff(depth)))
+    # Calculate buoyancy frequency.
     pr = gsw.p_from_z(-1 * depth, lat)
     SA = gsw.SA_from_SP(SP, pr, lon, lat)
     CT = gsw.CT_from_t(SA, t, pr)
-    N2, Pbar = gsw.Nsquared(SA, CT, pr, lat=lat)
-    Zbar = -1 * gsw.z_from_p(Pbar, lat)
+    N2, pr_mid = gsw.Nsquared(SA, CT, pr, lat=lat)
+    depth_mid = -1 * gsw.z_from_p(pr_mid, lat)
     isN = np.isfinite(N2)
-    n2polyfit = np.zeros(N2.shape) * np.nan
-    n2polyfit_mean = n2polyfit.copy()
+    # Second order polynomial fit for each depth window.
     for iwin, zw in enumerate(depth_bin):
-        ij = (Zbar >= (zw - dz)) & (Zbar < (zw + dz))
-        ij2 = (Zbar >= (zw - dz / 2)) & (Zbar < (zw + dz / 2))
+        # Find data points within the depth window. As we are operating on the
+        # mid-points here, we extend the search for datapoints by delta z on
+        # each side of the window.
+        ij = (depth_mid >= (zw - window_size / 2 - dz)) & (
+            depth_mid < (zw + window_size / 2 + dz)
+        )
         ij = ij * isN
-        p = np.polyfit(Zbar[ij], N2[ij], deg=2)
-        pv = np.polyval(p, Zbar[ij2])
-        n2polyfit_mean[ij2] = np.mean(pv)
-        n2polyfit[ij2] = pv
-    # Extraplolate over NaN's at the bottom
-    n2polyfit_mean = helpers.extrapolate_data(n2polyfit_mean)
-    n2polyfit = helpers.extrapolate_data(n2polyfit)
-    # Calculate strain
-    strain = (N2 - n2polyfit) / n2polyfit_mean
-    depth_st = depth[:-1] + np.diff(depth[:2] / 2)
-    # N2ref = n2polyfit_mean
-    N2ref = interp1d(Zbar, n2polyfit_mean, bounds_error=False)(depth_st)
-    strain = interp1d(Zbar, strain, bounds_error=False)(depth_st)
-    return strain, depth_st, N2ref
+        seg = {"depth_bin": zw, "segz": depth_mid[ij], "N2": N2[ij]}
+        p = np.polyfit(depth_mid[ij], N2[ij], deg=2)
+        seg["N2smooth"] = np.polyval(p, depth_mid[ij])
+        seg["N2mean"] = np.mean(seg["N2smooth"])
+        # Calculate strain
+        seg["strain"] = (seg["N2"] - seg["N2smooth"]) / seg["N2mean"]
+        out.append(seg)
+    return out
 
 
-def strain_adiabatic_leveling(depth, t, SP, lon, lat, bin_width):
+def strain_adiabatic_leveling(
+    depth, t, SP, lon, lat, bin_width, depth_bin, window_size
+):
     """
     Calculate strain with a smooth :math:`N^2` profile based on the adiabatic leveling method.
 
@@ -102,19 +116,36 @@ def strain_adiabatic_leveling(depth, t, SP, lon, lat, bin_width):
         Longitude
     lat : array-like or float
         Latitude
+    depth_bin : array-like
+        Window centers
+    window_size : float
+        Window size
 
     Returns
     -------
-    strain : array-like
-        Strain profile.
-    depth_st : array-like
-        Depth vector for `strain`.
-    N2ref : array-like
-        Smooth :math:`N^2` profile.
+    list
+        List with results in a dict for each depth segment. The dict has the following entries:
+        ``"segz"``
+            Segment depth vector (`array-like`).
+        ``"depth_bin"``
+            Segment center depth (`float`).
+        ``"N2"``
+            Segment buoyancy frequency squared (`array-like`).
+        ``"N2smooth"``
+            Segment polynomial fit to buoyancy frequency squared (`array-like`).
+        ``"N2mean"``
+            Segment mean buoyancy frequency squared (`float`).
+        ``"strain"``
+            Segment strain (`array-like`).
     """
-    p = gsw.p_from_z(-1 * depth, lat)
+    dz = np.absolute(np.median(np.diff(depth)))
+    # Prepare output list. It will hold a dictionary with data for each window.
+    out = []
+    # Calculate pressure
+    pr = gsw.p_from_z(-1 * depth, lat)
+    # Calculate smooth background N^2
     N2ref = nsq.adiabatic_leveling(
-        p,
+        pr,
         SP,
         t,
         lon,
@@ -124,16 +155,31 @@ def strain_adiabatic_leveling(depth, t, SP, lon, lat, bin_width):
         return_diagnostics=False,
         cap="both",
     )
-    # N2ref = interp1d(z, N2ref)()
-    SA = gsw.SA_from_SP(SP, p, lon, lat)
-    CT = gsw.CT_from_t(SA, t, p)
-    N2, Pbar = gsw.Nsquared(SA, CT, p, lat=lat)
-    Zbar = -1 * gsw.z_from_p(Pbar, lat)
-    N2ref = interp1d(p, N2ref)(Pbar)
+    # Calculate in-situ N^2
+    SA = gsw.SA_from_SP(SP, pr, lon, lat)
+    CT = gsw.CT_from_t(SA, t, pr)
+    N2, Pbar = gsw.Nsquared(SA, CT, pr, lat=lat)
+    depth_mid = -1 * gsw.z_from_p(Pbar, lat)
+    # Interpolate smooth N^2 to in-situ N^2
+    N2ref = interp1d(pr, N2ref)(Pbar)
+    # Calculate strain
     strain = (N2 - N2ref) / N2ref
-    depth_st = depth[:-1] + np.diff(depth[:2] / 2)
-    strain = interp1d(Zbar, strain, bounds_error=False)(depth_st)
-    return strain, depth_st, N2ref
+    isN = np.isfinite(N2) & np.isfinite(N2ref)
+    # Sort into depth windows
+    for iwin, zw in enumerate(depth_bin):
+        # Find data points within the depth window. As we are operating on the
+        # mid-points here, we extend the search for datapoints by delta z on
+        # each side of the window.
+        ij = (depth_mid >= (zw - window_size / 2 - dz)) & (
+            depth_mid < (zw + window_size / 2 + dz)
+        )
+        ij = ij * isN
+        seg = {"depth_bin": zw, "segz": depth_mid[ij], "N2": N2[ij]}
+        seg["N2smooth"] = N2ref[ij]
+        seg["N2mean"] = np.mean(seg["N2smooth"])
+        seg["strain"] = strain[ij]
+        out.append(seg)
+    return out
 
 
 def find_cutoff_wavenumber(P, m, integration_limit, lambda_min=5):
@@ -386,6 +432,7 @@ def shearstrain(
     ladcp_depth=None,
     m=None,
     depth_bin=None,
+    window_size=None,
     m_include_sh=np.arange(4),
     m_include_st=np.arange(4),
     ladcp_is_shear=False,
@@ -423,6 +470,8 @@ def shearstrain(
         Centers of windows over which spectra are computed. Defaults to
         np.arange(75, max(depth), 150). Note that windows are half-overlapping so
         the 150 spacing above means each window is 300 m tall.
+    window_size : float
+        Size of depth window [m].
     m_include_sh : array-like, optional
         Wavenumber integration range for shear spectra. Array must consist of
         indices or boolans to index m. Defaults to first 4 wavenumbers.
@@ -548,39 +597,26 @@ def shearstrain(
         # cut out any bins that won't hold any data
         depth_bin = depth_bin[depth_bin < np.max(depth)]
     nz = np.squeeze(depth_bin.shape)
-    delz = np.mean(np.diff(depth_bin))
+    # delz = np.mean(np.diff(depth_bin))
 
     # Calculate a smoothed N^2 profile and strain, either using 2nd order
     # polynomial fits to N^2 for each window (PF) or the adiabatic leveling
-    # method (AL).
+    # method (AL). Returns a list with data dict for each depth window.
     if smooth == "PF":
-        strain, depth_st, N2ref = strain_polynomial_fits(
-            depth, t, SP, lon, lat, depth_bin, delz
+        straincalc = strain_polynomial_fits(
+            depth, t, SP, lon, lat, depth_bin, window_size
         )
     elif smooth == "AL":
-        strain, depth_st, N2ref = strain_adiabatic_leveling(
-            depth, t, SP, lon, lat, bin_width=300
+        straincalc = strain_adiabatic_leveling(
+            depth,
+            t,
+            SP,
+            lon,
+            lat,
+            bin_width=300,
+            depth_bin=depth_bin,
+            window_size=window_size,
         )
-
-    # Buoyancy-normalize shear
-    if calcsh:
-        N2ref_adcp = interp1d(depth_st, N2ref, bounds_error=False)(depth_sh)
-        shear_un = uz / np.real(np.sqrt(N2ref_adcp))
-        shear_vn = vz / np.real(np.sqrt(N2ref_adcp))
-        shearn = shear_un + 1j * shear_vn
-
-    # Remove nan in shear, strain
-    if calcsh:
-        iin = np.isfinite(shearn)
-        shearn = shearn[iin]
-        depth_sh = depth_sh[iin]
-        N2ref_adcp = N2ref_adcp[iin]
-
-    iin = np.isfinite(strain)
-    strain = strain[iin]
-    depth_st = depth_st[iin]
-
-    N2 = N2ref[iin]
 
     # Convert wavenumber integration range to np.array in case it is something
     # else:
@@ -606,17 +642,24 @@ def shearstrain(
     Int_st = np.full(nz, np.nan)
     Int_sh = np.full(nz, np.nan)
 
-    for iwin, zi in enumerate(depth_bin):
+    for iwin, (zi, sti) in enumerate(zip(depth_bin, straincalc)):
+        assert zi == sti["depth_bin"]
         zw = depth_bin[iwin]
 
         # Shear spectra
         if calcsh:
-            iz = (depth_sh >= (zw - delz)) & (depth_sh <= (zw + delz))
-            ig = ~np.isnan(shearn[iz])
-            if ig.size > 10:
-                dz = np.mean(np.diff(depth_sh))
+            iz = (depth_sh >= (zw - window_size / 2)) & (
+                depth_sh <= (zw + window_size / 2)
+            )
+            # Buoyancy-normalize shear
+            shear_un = uz[iz] / np.real(np.sqrt(sti["N2mean"]))
+            shear_vn = vz[iz] / np.real(np.sqrt(sti["N2mean"]))
+            shearn = shear_un + 1j * shear_vn
+            ig = ~np.isnan(shearn)
+            if np.flatnonzero(ig).size > 10:
+                dz = np.mean(np.diff(depth_sh[iz]))
                 _, _, Ptot, m0 = helpers.psd(
-                    shearn[iz], dz, ffttype="t", detrend=True, window=window
+                    shearn[ig], dz, ffttype="t", detrend=True, window=window
                 )
                 # Compensation for first differencing
                 H = np.sinc(m0 * dz / 2 / np.pi) ** 2
@@ -628,12 +671,14 @@ def shearstrain(
                 Ptot_sh = np.zeros_like(m) * np.nan
 
         # Strain spectra
-        iz = (depth_st >= (zw - delz)) & (depth_st <= (zw + delz))
-        ig = ~np.isnan(strain[iz])
-        if ig.size > 10:
-            dz = np.mean(np.diff(depth_st))
+        # iz = (depth_st >= (zw - delz)) & (depth_st <= (zw + delz))
+        segstrain = sti["strain"]
+        segstraindep = sti["segz"]
+        ig = ~np.isnan(segstrain)
+        if np.flatnonzero(ig).size > 10:
+            dz = np.mean(np.diff(segstraindep))
             _, _, Ptot, m0 = helpers.psd(
-                strain[iz], dz, ffttype="t", detrend=True, window=window
+                segstrain[ig], dz, ffttype="t", detrend=True, window=window
             )
             # Compensation for first differencing
             H = np.sinc(m0 * dz / 2 / np.pi) ** 2
@@ -643,9 +688,8 @@ def shearstrain(
         else:
             P_strain[iwin, :] = np.nan
             Ptot_st = np.zeros_like(m) * np.nan
-
         # Mean stratification per segment
-        Nm = np.sqrt(np.nanmean(N2[iz]))
+        Nm = np.sqrt(sti["N2mean"])
         Nmean[iwin] = Nm
 
         # Shear cutoff wavenumber
@@ -718,8 +762,7 @@ def shearstrain(
             m=m,
             depth_bin=depth_bin,
             Nmean=Nmean,
-            strain=strain,
-            depth_st=depth_st,
+            strain=straincalc,
             Int_sh=Int_sh,
             Int_st=Int_st,
         )
