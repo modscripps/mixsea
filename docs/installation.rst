@@ -17,13 +17,6 @@ To install mixsea, run this command in your terminal:
 This is the preferred method to install mixsea, as it will always install the
 most recent stable release.
 
-.. note::
-
-  This package is still under construction and has not been released on
-  `pypi.org <https://pypi.org/>`_ yet. It currently needs to be installed from
-  sources, see below.
-
-
 From sources
 ------------
 
@@ -33,7 +26,7 @@ You can clone the public repository:
 
 .. code-block:: console
 
-    $ git clone git://github.com/modscripps/mixsea
+    $ git clone https://github.com/modscripps/mixsea.git
 
 Once you have a copy of the source, you can install it using pip. First change into the package directory:
 
