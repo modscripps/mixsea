@@ -532,8 +532,12 @@ def shearstrain(
             Wavenumber vector (`array-like`).
         ``"depth_bin"``
             Center points of depth windows (`array-like`).
-        ``"Nmean"``
-            Average N per depth window calculated as root-mean from N^2(`array-like`).
+        ``"strain"``
+            Results from strain calculation (`dict`).
+        ``"Int_sh"``
+            Results from shear variance integration (`array-like`).
+        ``"Int_st"``
+            Results from strain variance integration (`array-like`).
 
     Notes
     -----
@@ -638,7 +642,6 @@ def shearstrain(
     krho_st = np.full(nz, np.nan)
     eps_shst = np.full(nz, np.nan)
     eps_st = np.full(nz, np.nan)
-    Nmean = np.full(nz, np.nan)
     Int_st = np.full(nz, np.nan)
     Int_sh = np.full(nz, np.nan)
 
@@ -690,7 +693,6 @@ def shearstrain(
             Ptot_st = np.zeros_like(m) * np.nan
         # Mean stratification per segment
         Nm = np.sqrt(sti["N2mean"])
-        Nmean[iwin] = Nm
 
         # Shear cutoff wavenumber
         if calcsh:
@@ -761,7 +763,6 @@ def shearstrain(
             Rwtot=Rwtot,
             m=m,
             depth_bin=depth_bin,
-            Nmean=Nmean,
             strain=straincalc,
             Int_sh=Int_sh,
             Int_st=Int_st,
