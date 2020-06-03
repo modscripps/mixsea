@@ -9,8 +9,8 @@ mixsea
 .. image:: https://travis-ci.com/modscripps/mixsea.svg?branch=master
         :target: https://travis-ci.com/modscripps/mixsea
 
-.. image:: https://readthedocs.org/projects/mixsea/badge/?version=latest
-        :target: https://mixsea.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/mixsea/badge/?version=stable
+        :target: https://mixsea.readthedocs.io/en/latest/?badge=stable
         :alt: Documentation Status
 
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
