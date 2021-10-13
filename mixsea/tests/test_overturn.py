@@ -24,38 +24,46 @@ def test_overturn_const_s(ctd_profile):
         ctd_profile["lat"][0],
     )
     assert np.nanmean(eps) < 1e-4
-    
-    
+
+
 def test_thorpe_scale():
-    dz = 1.
-    z0 = -2200.
-    H = 100.
-    h = 50.
-    z = np.arange(z0+H, z0-H, -dz)
+    dz = 1.0
+    z0 = -2200.0
+    H = 100.0
+    h = 50.0
+    z = np.arange(z0 + H, z0 - H, -dz)
     rho_0 = 1041.4
     delta = 1e-4
 
-    top = ((z0 + H) >= z) & (z >= (z0 + h)) 
+    top = ((z0 + H) >= z) & (z >= (z0 + h))
     middle = ((z0 + h) > z) & (z > (z0 - h))
     bottom = ((z0 - h) >= z) & (z >= (z0 - H))
 
     # Thorpe 77 profile
     rho = np.zeros_like(z)
-    rho[top] = rho_0*(1 - delta)
-    rho[middle] = rho_0*(1 + delta*np.sin(3*np.pi*(z[middle] + z0)/(2*h)))
-    rho[bottom] = rho_0*(1 + delta)
+    rho[top] = rho_0 * (1 - delta)
+    rho[middle] = rho_0 * (1 + delta * np.sin(3 * np.pi * (z[middle] + z0) / (2 * h)))
+    rho[bottom] = rho_0 * (1 + delta)
 
-    # Thorpe 77 analytical solution 
+    # Thorpe 77 analytical solution
     rho_s = np.zeros_like(z)
     rho_s[top] = rho[top]
-    rho_s[middle] = rho_0*(1 - delta*np.sin(np.pi*(z[middle] + z0)/(2*h)))
+    rho_s[middle] = rho_0 * (1 - delta * np.sin(np.pi * (z[middle] + z0) / (2 * h)))
     rho_s[bottom] = rho[bottom]
-    
-    Lt, thorpe_disp, q_sorted, noise_flag, ends_flag, Ro, patches, idx_sorted = overturn.thorpe_scale(-z, rho, 0)
-    
+
+    (
+        Lt,
+        thorpe_disp,
+        q_sorted,
+        noise_flag,
+        ends_flag,
+        Ro,
+        patches,
+        idx_sorted,
+    ) = overturn.thorpe_scale(-z, rho, 0)
+
     notnan = ~np.isnan(Lt)
-    
+
     assert np.isclose(q_sorted, rho_s).all()
     # assert np.isclose(np.unique(out["Lt"][notnan]), (8*h/9)*(1 + (3/np.pi**2)*(np.pi**2 - 8))**0.5) <- THIS FAILS, COULD BE A BIG ISSUE??
     assert np.isclose(np.unique(Ro[notnan]), 0.5, atol=0.02)
-           

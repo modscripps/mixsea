@@ -3,7 +3,12 @@ import numpy as np
 
 
 def nan_eps_overturn(
-    depth, t, SP, lon, lat, **kwargs,
+    depth,
+    t,
+    SP,
+    lon,
+    lat,
+    **kwargs,
 ):
     """
     Calculate turbulent dissipation based on the Thorpe scale method attempting to deal NaN values in the input data.
@@ -214,9 +219,18 @@ def eps_overturn(
             q = intermediate_profile(
                 q, acc=dnoise, hinge=1000, kind="down"
             )  # TODO: make hinge optional
-            
+
         # --->> THORPE SCALES <<---
-        Lt, thorpe_disp, q_sorted, noise_flag, ends_flag, Ro, patches, sidx = thorpe_scale(depth, q, dnoise)
+        (
+            Lt,
+            thorpe_disp,
+            q_sorted,
+            noise_flag,
+            ends_flag,
+            Ro,
+            patches,
+            sidx,
+        ) = thorpe_scale(depth, q, dnoise)
 
         # If there are no overturns, move on to the next pressure bin.
         if not np.any(patches):
@@ -238,10 +252,15 @@ def eps_overturn(
             i1 = patch[1] + 1  # Need +1 for last point in overturn.
             pidx = np.arange(i0, i1, 1)
 
+            Lto = np.unique(Lt[pidx])
+
             # Estimate the buoyancy frequency.
             if N2_method == "teos":
                 N2o, _ = gsw.Nsquared(
-                    SA_sorted[[i0, i1]], CT_sorted[[i0, i1]], p[[i0, i1]], lat,
+                    SA_sorted[[i0, i1]],
+                    CT_sorted[[i0, i1]],
+                    p[[i0, i1]],
+                    lat,
                 )
             elif N2_method == "teosp1":
                 # Go beyond overturn. Need to add 1 for this, unless end or beginning.
@@ -272,9 +291,9 @@ def eps_overturn(
             # Flag negative N squared.
             if N2o < 0:
                 N2_flag[pidx] = True
-                
+
             Roo = np.unique(Ro[pidx])
-            
+
             if Roo < Roc:
                 Ro_flag[pidx] = True
 
@@ -323,8 +342,8 @@ def eps_overturn(
         return eps, N2, diag
     else:
         return eps, N2
-    
-    
+
+
 def thorpe_scale(depth, q, dnoise):
     """
     Estimate the Thorpe scale from unstable patches in a profile.
@@ -334,9 +353,9 @@ def thorpe_scale(depth, q, dnoise):
     depth : array-like
         Depth [m]
     q : array-like
-        Quantity from which Thorpe scales will be computed, e.g. density or temperature. If using 
-        temperature, consider multiplying by -1 to get around the fact that temperature generally 
-        decreases with depth. 
+        Quantity from which Thorpe scales will be computed, e.g. density or temperature. If using
+        temperature, consider multiplying by -1 to get around the fact that temperature generally
+        decreases with depth.
     dnoise : float, optional
         Uncertainty or noise in q.
 
@@ -357,20 +376,20 @@ def thorpe_scale(depth, q, dnoise):
     patches : ndarray
         Indices of overturning patches, e.g. patches[:, 0] are start indices and patches[:, 1] are end indices.
     """
-    
+
     depth = np.asarray(depth)
     q = np.asarray(q)
-    
+
     if q[0] > q[-1]:
         raise ValueError("The entire profile is unstable, q[0] > q[-1].")
-        
+
     if not np.all(np.isclose(np.maximum.accumulate(depth), depth)):
         raise ValueError(
             "It appears that depth is not monotonically increasing, please fix."
         )
 
     idx_sorted, patches = find_overturns(q, combine_gap=0)
-    
+
     ndata = depth.size
 
     # Thorpe displacements
@@ -383,7 +402,7 @@ def thorpe_scale(depth, q, dnoise):
     Ro = np.full_like(depth, np.nan)
     noise_flag = np.full_like(depth, False, dtype=bool)
     ends_flag = np.full_like(depth, False, dtype=bool)
-    
+
     dz = 0.5 * (depth[2:] - depth[:-2])  # 'width' of each data point
     dz = np.hstack((dz[0], dz, dz[-1]))  # assume width of first and last data point
 
