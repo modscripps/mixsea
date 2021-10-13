@@ -93,7 +93,7 @@ def eps_overturn(
     lat : float
         Latitude of observation
     dnoise : float, optional
-        Noise level of density [kg/m^3]. Default is 5e-4.
+        Noise level of density [kg/m^3] or conservative temperature [°C], depending on overturns_from_CT. Default is 5e-4.
     alpha : float, optional
         Constant of proportionality between Thorpe and Ozmidov scale. Default is 0.95.
     Roc : float, optional
@@ -357,6 +357,9 @@ def thorpe_scale(depth, q, dnoise):
     patches : ndarray
         Indices of overturning patches, e.g. patches[:, 0] are start indices and patches[:, 1] are end indices.
     """
+    
+    depth = np.asarray(depth)
+    q = np.asarray(q)
     
     if q[0] > q[-1]:
         raise ValueError("The entire profile is unstable, q[0] > q[-1].")
