@@ -66,7 +66,6 @@ def test_thorpe_scale():
 	) = overturn.thorpe_scale(-z, rho, 0)
 
 	inoverturn = thorpe_disp != 0.
-	
 	assert np.isclose( q_sorted, rho_s ).all()
 	assert np.isclose( np.unique(Lt[inoverturn] )[0], Lt_analytical )
 	assert np.isclose( np.unique(Ro[inoverturn] )[0], 0.5, atol=0.02)
