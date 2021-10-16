@@ -46,6 +46,8 @@ extensions = [
     "sphinx.ext.mathjax",
 ]
 
+bibtex_bibfiles = ["references.bib"]
+
 autosummary_generate = True
 autodoc_typehints = "none"
 
