@@ -3,7 +3,12 @@ import numpy as np
 
 
 def nan_eps_overturn(
-    depth, t, SP, lon, lat, **kwargs,
+    depth,
+    t,
+    SP,
+    lon,
+    lat,
+    **kwargs,
 ):
     """
     Calculate turbulent dissipation based on the Thorpe scale method attempting to deal NaN values in the input data.
@@ -82,47 +87,47 @@ def eps_overturn(
     Parameters
     ----------
     depth : array-like
-        Depth [m]
+            Depth [m]
     t : array-like
-        In-situ temperature [ITS90, °C]
+            In-situ temperature [ITS90, °C]
     SP : float or array-like
-        Salinity [PSU]. Can be a single constant value. This may be convenient if only temperature data
-        are available.
+            Salinity [PSU]. Can be a single constant value. This may be convenient if only temperature data
+            are available.
     lon : float
-        Longitude of observation
+            Longitude of observation
     lat : float
-        Latitude of observation
+            Latitude of observation
     dnoise : float, optional
-        Noise level of density [kg/m^3]. Default is 5e-4.
+            Noise level of density [kg/m^3]. Default is 5e-4.
     alpha : float, optional
-        Constant of proportionality between Thorpe and Ozmidov scale. Default is 0.95.
+            Constant of proportionality between Thorpe and Ozmidov scale. Default is 0.95.
     Roc : float, optional
-        Critical value of the overturn ratio Ro. An overturn will be considered
-        noise if Ro < Roc.
+            Critical value of the overturn ratio Ro. An overturn will be considered
+            noise if Ro < Roc.
     background_eps : float, optional
-        Background epsilon where no overturn detected. Defaults to numpy.nan.
+            Background epsilon where no overturn detected. Defaults to numpy.nan.
     use_ip : bool, optional
-        Sets whether to use the intermediate profile method. Default is True. If True,
-        the dnoise parameter is passed as the `accuracy' argument of the intermediate
-        profile method.
+            Sets whether to use the intermediate profile method. Default is True. If True,
+            the dnoise parameter is passed as the `accuracy' argument of the intermediate
+            profile method.
     N2_method : string, optional
-        Method for calculation of buoyancy frequency. Default is 'teosp1'. Options are 'bulk',
-        'endpt', 'teos' and 'teosp1'.
+            Method for calculation of buoyancy frequency. Default is 'teosp1'. Options are 'bulk',
+            'endpt', 'teos' and 'teosp1'.
     overturns_from_CT : bool, optional
-        If true, overturning patches will be diagnosed from the conservative temperature CT,
-        instead of potential density. Default is False.
+            If true, overturning patches will be diagnosed from the conservative temperature CT,
+            instead of potential density. Default is False.
     return_diagnostics : bool, optional
-        Default is False. If True, this function will return a dictionary containing
-        variables such as the Thorpe scale Lt, etc.
+            Default is False. If True, this function will return a dictionary containing
+            variables such as the Thorpe scale Lt, etc.
 
     Returns
     -------
     eps : array-like
-        Turbulent dissipation [W/kg]
+            Turbulent dissipation [W/kg]
     N2 : array-like
-        Background stratification of each overturn detected [s^-2]
+            Background stratification of each overturn detected [s^-2]
     diag : dict, optional
-        Dictionary of diagnositc variables, set return with the `return_diagnostics' argument.
+            Dictionary of diagnositc variables, set return with the `return_diagnostics' argument.
 
 
     """
@@ -167,6 +172,7 @@ def eps_overturn(
         "N2",
         "Lt",
         "thorpe_disp",
+        "sidx",
         "dens",
         "dens_sorted",
         "Ro",
@@ -224,8 +230,9 @@ def eps_overturn(
         if not np.any(patches):
             continue
 
-        # Thorpe displacements
-        thorpe_disp = depth[sidx] - depth
+        # Thorpe displacements (by definition relative to initial locations, so unsorted)
+        unsidx = np.argsort(sidx)
+        thorpe_disp = (depth[sidx] - depth)[unsidx]
 
         q_sorted = q[sidx]
 
@@ -256,7 +263,10 @@ def eps_overturn(
             # Estimate the buoyancy frequency.
             if N2_method == "teos":
                 N2o, _ = gsw.Nsquared(
-                    SA_sorted[[i0, i1]], CT_sorted[[i0, i1]], p[[i0, i1]], lat,
+                    SA_sorted[[i0, i1]],
+                    CT_sorted[[i0, i1]],
+                    p[[i0, i1]],
+                    lat,
                 )
             elif N2_method == "teosp1":
                 # Go beyond overturn. Need to add 1 for this, unless end or beginning.
@@ -328,6 +338,7 @@ def eps_overturn(
         diag["Lt"][inbin] = Lt[inbin]
         diag["Ro"][inbin] = Ro[inbin]
         diag["thorpe_disp"][inbin] = thorpe_disp[inbin]
+        diag["sidx"][inbin] = sidx[inbin]
         diag["dens"][inbin] = dens[inbin]
         diag["dens_sorted"][inbin] = dens_sorted[inbin]
         diag["CT_sorted"][inbin] = CT_sorted[inbin]
@@ -367,18 +378,18 @@ def find_overturns(q, combine_gap=0):
     Parameters
     ----------
     q : array_like 1D
-        Profile of some quantity from which overturns can be detected
-        e.g. temperature or density.
+            Profile of some quantity from which overturns can be detected
+            e.g. temperature or density.
     combine_gap : float, optional
-        Combine overturns that are separated by less than a given number of points.
-        Default is 0.
+            Combine overturns that are separated by less than a given number of points.
+            Default is 0.
 
     Returns
     -------
     idx_sorted : 1D numpy array
-        Indices that sort the data q.
+            Indices that sort the data q.
     idx_patches : (N, 2) numpy array
-        Start and end indices of the overturns.
+            Start and end indices of the overturns.
 
     """
     idx = np.arange(q.size, dtype=int)
@@ -396,18 +407,18 @@ def intermediate_profile_topdown(q, acc, hinge):
     Parameters
     ----------
     q : array_like 1D
-        Profile of some quantity that the intermediate profile method can be
-        applied to e.g. temperature or density.
+            Profile of some quantity that the intermediate profile method can be
+            applied to e.g. temperature or density.
     acc : float, optional
-        Accuracy parameter. The intermediate profile change in steps of acc.
+            Accuracy parameter. The intermediate profile change in steps of acc.
     hinge : float, optional
-        Intermediate profile values are equal to the hinge plus an integer
-        multiple of acc. It should be kept constant across profiles.
+            Intermediate profile values are equal to the hinge plus an integer
+            multiple of acc. It should be kept constant across profiles.
 
     Returns
     -------
     qi : 1D numpy array
-        Intermediate profile.
+            Intermediate profile.
 
     """
 
@@ -432,22 +443,22 @@ def intermediate_profile(q, acc=5e-4, hinge=1000, kind="down"):
     Parameters
     ----------
     q : array_like 1D
-        Profile of some quantity that the intermediate profile method can be
-        applied to e.g. temperature or density.
+            Profile of some quantity that the intermediate profile method can be
+            applied to e.g. temperature or density.
     acc : float, optional
-        Accuracy parameter. The intermediate profile change in steps of acc.
+            Accuracy parameter. The intermediate profile change in steps of acc.
     hinge : float, optional
-        Intermediate profile values are equal to the hinge plus an integer multiple
-        of acc. It should be kept constant across profiles.
+            Intermediate profile values are equal to the hinge plus an integer multiple
+            of acc. It should be kept constant across profiles.
     kind : string, optional
-        Either 'up', 'down' or 'ave'. Default is ave. This argument determines
-        whether the method is applied top down (q[0] to q[end]), bottom up
-        (q[end] to [q[0]]) or the average of up and down.
+            Either 'up', 'down' or 'ave'. Default is ave. This argument determines
+            whether the method is applied top down (q[0] to q[end]), bottom up
+            (q[end] to [q[0]]) or the average of up and down.
 
     Returns
     -------
     qi : 1D numpy array
-        Intermediate profile.
+            Intermediate profile.
 
     """
 
