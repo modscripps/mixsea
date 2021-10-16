@@ -140,7 +140,15 @@ def nsqfcn(s, t, p, p0, dp, lon, lat):
 
 
 def adiabatic_leveling(
-    P, S, T, lon, lat, bin_width=100.0, order=1, return_diagnostics=False, cap=None,
+    P,
+    S,
+    T,
+    lon,
+    lat,
+    bin_width=100.0,
+    order=1,
+    return_diagnostics=False,
+    cap=None,
 ):
     """Generate smooth buoyancy frequency profile by adiabatic leveling.
 
