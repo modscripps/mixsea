@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.abspath(".."))
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
-# needs_sphinx = '1.0'
+# needs_sphinx = '1.3'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
@@ -137,9 +137,10 @@ html_static_path = ["_static"]
 # fix api table width.
 # fix from https://rackerlabs.github.io/docs-rackspace/tools/rtd-tables.html
 
-html_context = {
-    "css_files": ["_static/theme_overrides.css"]  # override wide tables in RTD theme
-}
+# This was breaking all of my static html formatting, so I think this is the wrong way to do this
+# html_context = {
+#    "css_files": ["_static/theme_overrides.css"]  # override wide tables in RTD theme
+# }
 
 
 # -- Options for HTMLHelp output ---------------------------------------
