@@ -298,7 +298,7 @@ def gm_shear_variance(m, iim, N):
     N0 = 5.24e-3  # reference buoyancy frequency = 3 cph
     b = 1300  # thermocline scale depth
     jstar = 3
-    E0 = 6.3e-5  # GM energy level
+    E0 = 6.3e-5  # GM76 energy level
     Pgm = (
         (3 * np.pi * E0 * b * jstar / 2)
         * m ** 2
@@ -699,11 +699,13 @@ def shearstrain(
             iimsh, Mmax_sh[iwin] = find_cutoff_wavenumber(
                 Ptot_sh[m_include_sh], m[m_include_sh], sh_integration_limit
             )
+            iimsh = m_include_sh[iimsh]
 
         # Strain cutoff wavenumber
         iimst, Mmax_st[iwin] = find_cutoff_wavenumber(
             Ptot_st[m_include_st], m[m_include_st], st_integration_limit
         )
+        iimst = m_include_st[iimst]
 
         if calcsh:
             # Integrate shear spectrum to obtain shear variance
