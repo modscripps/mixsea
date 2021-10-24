@@ -742,6 +742,8 @@ def shearstrain(
     eps_st = np.full(nz, np.nan)
     Int_st = np.full(nz, np.nan)
     Int_sh = np.full(nz, np.nan)
+    Int_st_gm = np.full(nz, np.nan)
+    Int_sh_gm = np.full(nz, np.nan)
 
     for iwin, (zi, sti) in enumerate(zip(depth_bin, straincalc)):
         assert zi == sti["depth_bin"]
@@ -813,12 +815,14 @@ def shearstrain(
             Int_sh[iwin] = Ssh
             # GM shear variance
             Sshgm, Pshgm = gm_shear_variance(m, iimsh, Nm)
+            Int_sh_gm[iwin] = Sshgm
 
         # Integrate strain spectrum to obtain strain variance
         Sst = np.trapz(Ptot_st[iimst], m[iimst])
         Int_st[iwin] = Sst
         # GM strain variance
         Sstgm, Pstgm = gm_strain_variance(m, iimst, Nm)
+        Int_st_gm[iwin] = Sstgm
 
         if calcsh:
             # Shear/strain ratio normalized by GM. Factor 3 corrects for the ratio
@@ -855,6 +859,8 @@ def shearstrain(
             strain=straincalc,
             Int_sh=Int_sh,
             Int_st=Int_st,
+            Int_sh_gm=Int_sh_gm,
+            Int_st_gm=Int_st_gm,
         )
         return eps_shst, krho_shst, diag
     else:
