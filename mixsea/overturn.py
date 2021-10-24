@@ -172,6 +172,7 @@ def eps_overturn(
         "N2",
         "Lt",
         "thorpe_disp",
+        "sidx",
         "dens",
         "dens_sorted",
         "Ro",
@@ -235,6 +236,10 @@ def eps_overturn(
         # If there are no overturns, move on to the next pressure bin.
         if not np.any(patches):
             continue
+
+        # Thorpe displacements (by definition relative to initial locations, so unsorted)
+        unsidx = np.argsort(sidx)
+        thorpe_disp = (depth[sidx] - depth)[unsidx]
 
         # Sort other quantities based on the sorting indices.
         dens_sorted = dens[sidx]
@@ -311,6 +316,7 @@ def eps_overturn(
         diag["Lt"][inbin] = Lt[inbin]
         diag["Ro"][inbin] = Ro[inbin]
         diag["thorpe_disp"][inbin] = thorpe_disp[inbin]
+        diag["sidx"][inbin] = sidx[inbin]
         diag["dens"][inbin] = dens[inbin]
         diag["dens_sorted"][inbin] = dens_sorted[inbin]
         diag["CT_sorted"][inbin] = CT_sorted[inbin]
