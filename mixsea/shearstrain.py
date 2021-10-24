@@ -344,6 +344,10 @@ def eps_strain(eps0, Nm, N0, Sst, Sstgm, Rw, f):
     )
 
 
+def diffusivity(eps, N, Gam=0.2):
+    return Gam * eps / N ** 2
+
+
 def gm_shear_variance(m, iim, N):
     r"""
     GM model shear variance
@@ -718,7 +722,9 @@ def shearstrain(
     m_include_st = np.asarray(m_include_st)
 
     N0 = 5.24e-3  # (3 cph)
-    K0 = 0.05 * 1e-4
+    Gam0 = 0.2  # mixing coefficient
+
+    # GM dissipation level
     eps0 = 7.8e-10  # Waterman et al. 2014
     # eps0 = 7.9e-10 # Polzin et al. 1995
     # eps0 = 6.73e-10 # Gregg et al. 2003
@@ -825,13 +831,13 @@ def shearstrain(
 
             # Shear/strain parameterization
             eps_shst[iwin] = eps_shearstrain(eps0, Nm, N0, Ssh, Sshgm, Rw, f)
-            krho_shst[iwin] = eps_shst[iwin] * K0 / eps0 / (Nm ** 2 / N0 ** 2)
+            krho_shst[iwin] = diffusivity(eps_shst[iwin], Nm, Gam=Gam0)
 
         # Strain only parameterization
         # Use assumed shear/strain ratio of 3
         Rw = 3
         eps_st[iwin] = eps_strain(eps0, Nm, N0, Sst, Sstgm, Rw, f)
-        krho_st[iwin] = eps_st[iwin] * K0 / eps0 / (Nm ** 2 / N0 ** 2)
+        krho_st[iwin] = diffusivity(eps_st[iwin], Nm, Gam=Gam0)
 
     if return_diagnostics:
         diag = dict(
