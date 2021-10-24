@@ -211,11 +211,43 @@ def find_cutoff_wavenumber(P, m, integration_limit, lambda_min=5):
         iim = np.append(iim, 1)
     if iim.size > 1:
         # Do not go to wavenumbers corresponding to lambda_z < lambda_min meter
-        if np.max(m[iim] / 2 / np.pi) > 0.2:
-            iim = np.where(m / 2 / np.pi < 0.2)[0]
+        if np.max(m[iim] / 2 / np.pi) > 1.0 / lambda_min:
+            iim = np.where(m / 2 / np.pi < 1.0 / lambda_min)[0]
         return iim, np.max(m[iim])
     else:
         return iim, np.nan
+
+
+def aspect_ratio_correction_shst(Rw):
+    """
+    Compute kinematic internal wave aspect ratio term based shear/strain ratio shear/strain parameterization.
+
+    Parameters
+    ----------
+    Rw : float or np.ndarray
+
+    Returns
+    -------
+    float or np.ndarray
+
+    """
+    return 3 * (Rw + 1) / (2 * np.sqrt(2) * Rw * np.sqrt(Rw - 1))
+
+
+def aspect_ratio_correction_st(Rw):
+    """
+    Compute kinematic internal wave aspect ratio term based shear/strain ratio for strain-only parameterization
+
+    Parameters
+    ----------
+    Rw : float or np.ndarray
+
+    Returns
+    -------
+    float or np.ndarray
+
+    """
+    return 1 / 6 / np.sqrt(2) * Rw * (Rw + 1) / np.sqrt(Rw - 1)
 
 
 def latitude_correction(f, N):
@@ -252,6 +284,64 @@ def latitude_correction(f, N):
     N0 = 5.24e-3  # rad s-1
     f = np.abs(f)
     return f * np.arccosh(N / f) / (f30 * np.arccosh(N0 / f30))
+
+
+def eps_shearstrain(eps0, Nm, N0, Ssh, Sshgm, Rw, f):
+    """
+    Parameterized turbulent kinetic energy dissipation rate
+
+    Parameters
+    ----------
+    eps0 : float
+        GM reference dissipation rate
+    Nm : float
+        background stratification in window
+    N0 : float
+        GM reference stratification
+    Ssh : float
+        band-integrated observed shear variance normalized by mean stratification
+    Sshgm : float
+        band-integrated GM shear variance normalized by GM reference stratification
+    Rw : float
+        shear/strain ratio
+    f : float
+        Coriolis frequency
+    """
+    return (
+        eps0
+        * (Nm ** 2 / N0 ** 2)
+        * (Ssh ** 2 / Sshgm ** 2)
+        * (aspect_ratio_correction_shst(Rw) * latitude_correction(f, Nm))
+    )
+
+
+def eps_strain(eps0, Nm, N0, Sst, Sstgm, Rw, f):
+    """
+    Parameterized turbulent kinetic energy dissipation rate
+
+    Parameters
+    ----------
+    eps0 : float
+        GM reference dissipation rate
+    Nm : float
+        background stratification in window
+    N0 : float
+        GM reference stratification
+    Sst : float
+        band-integrated observed strain normalized by mean stratification
+    Sstgm : float
+        band-integrated GM strain variance normalized by GM reference stratification
+    Rw : float
+        shear/strain ratio
+    f : float
+        Coriolis frequency
+    """
+    return (
+        eps0
+        * (Nm ** 2 / N0 ** 2)
+        * (Sst ** 2 / Sstgm ** 2)
+        * (aspect_ratio_correction_st(Rw) * latitude_correction(f, Nm))
+    )
 
 
 def gm_shear_variance(m, iim, N):
@@ -638,6 +728,8 @@ def shearstrain(
     Mmax_sh = np.full(nz, np.nan)
     Mmax_st = Mmax_sh.copy()
     Rwtot = np.full(nz, np.nan)
+    Rwcor = np.full(nz, np.nan)
+    Nmseg = np.full(nz, np.nan)
     krho_shst = np.full(nz, np.nan)
     krho_st = np.full(nz, np.nan)
     eps_shst = np.full(nz, np.nan)
@@ -691,8 +783,10 @@ def shearstrain(
         else:
             P_strain[iwin, :] = np.nan
             Ptot_st = np.zeros_like(m) * np.nan
+
         # Mean stratification per segment
         Nm = np.sqrt(sti["N2mean"])
+        Nmseg[iwin] = Nm
 
         # Shear cutoff wavenumber
         if calcsh:
@@ -727,32 +821,17 @@ def shearstrain(
             Rwtot[iwin] = Rw
             # Avoid negative square roots in hRw below
             Rw = 1.01 if Rw < 1.01 else Rw
+            Rwcor[iwin] = Rw
 
             # Shear/strain parameterization
-            hRw = 3 * (Rw + 1) / (2 * np.sqrt(2) * Rw * np.sqrt(Rw - 1))
-            krho_shst[iwin] = (
-                K0 * (Ssh ** 2 / Sshgm ** 2) * (hRw * latitude_correction(f, Nm))
-            )
-            eps_shst[iwin] = (
-                eps0
-                * (Nm ** 2 / N0 ** 2)
-                * (Ssh ** 2 / Sshgm ** 2)
-                * (hRw * latitude_correction(f, Nm))
-            )
+            eps_shst[iwin] = eps_shearstrain(eps0, Nm, N0, Ssh, Sshgm, Rw, f)
+            krho_shst[iwin] = eps_shst[iwin] * K0 / eps0 / (Nm ** 2 / N0 ** 2)
 
         # Strain only parameterization
         # Use assumed shear/strain ratio of 3
         Rw = 3
-        h2Rw = 1 / 6 / np.sqrt(2) * Rw * (Rw + 1) / np.sqrt(Rw - 1)
-        krho_st[iwin] = (
-            K0 * (Sst ** 2 / Sstgm ** 2) * (h2Rw * latitude_correction(f, Nm))
-        )
-        eps_st[iwin] = (
-            eps0
-            * (Nm ** 2 / N0 ** 2)
-            * (Sst ** 2 / Sstgm ** 2)
-            * (h2Rw * latitude_correction(f, Nm))
-        )
+        eps_st[iwin] = eps_strain(eps0, Nm, N0, Sst, Sstgm, Rw, f)
+        krho_st[iwin] = eps_st[iwin] * K0 / eps0 / (Nm ** 2 / N0 ** 2)
 
     if return_diagnostics:
         diag = dict(
@@ -763,6 +842,8 @@ def shearstrain(
             Mmax_sh=Mmax_sh,
             Mmax_st=Mmax_st,
             Rwtot=Rwtot,
+            Rwcor=Rwcor,
+            Nmseg=Nmseg,
             m=m,
             depth_bin=depth_bin,
             strain=straincalc,
