@@ -32,6 +32,9 @@ Shear/strain-based parameterization
     shearstrain.gm_shear_variance
     shearstrain.gm_strain_variance
     shearstrain.find_cutoff_wavenumber
+    shearstrain.diffusivity
+    shearstrain.aspect_ratio_correction_shst
+    shearstrain.aspect_ratio_correction_st
 
 Stratification
 ==============
