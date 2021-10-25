@@ -345,6 +345,33 @@ def eps_strain(eps0, Nm, N0, Sst, Sstgm, Rw, f):
 
 
 def diffusivity(eps, N, Gam=0.2):
+    r"""
+    Calculate vertical diffusivity
+
+    Parameters
+    ----------
+    eps : array-like
+        Turbulent dissipation
+    N : array-like
+        Buoyancy frequency
+    Gam : float, optional
+        Mixing efficiency Gamma. Defaults to 0.2 as commonly used.
+
+    Returns
+    -------
+    kappa : array-like
+        Vertical diffusivity
+
+    Notes
+    -----
+    Calculates vertical diffusivity from turbulent dissipation based on a
+    constant mixing efficiency:
+
+    .. math::
+
+        \kappa = \Gamma \frac{\epsilon}{N^2}
+
+    """
     return Gam * eps / N ** 2
 
 
