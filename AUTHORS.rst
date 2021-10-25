@@ -11,7 +11,7 @@ Development Lead
 Contributors
 ------------
 
-* Henry Drake <https://github.com/hdrake>
+* Henri Drake <https://github.com/hdrake>
 
 Other
 -----
