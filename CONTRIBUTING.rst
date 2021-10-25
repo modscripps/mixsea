@@ -261,12 +261,9 @@ Some other important things to know about the docs:
   doc build. This approach means that code examples will always be up to date,
   but it does make the doc building a bit more complex
 
-..  - Our API documentation in ``doc/api.rst`` houses the auto-generated
-  documentation from the docstrings. For classes, there are a few subtleties
-  around controlling which methods and attributes have pages auto-generated.
+- The documentation includes jupyer notebooks via the `nbsphinx <https://nbsphinx.readthedocs.io>`__ exension. Make sure to clean all notebook output before adding and committing changes, this removes any images and other output and makes diffs much more easy to read.
 
-..  Every method should be included in a ``toctree`` in ``api.rst``, else Sphinx
-  will emit a warning.
+- Our API documentation in ``doc/api.rst`` houses the auto-generated documentation from the docstrings. Every method should be included in ``api.rst``, else Sphinx will emit a warning.
 
 
 Building the documentation

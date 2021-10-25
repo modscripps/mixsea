@@ -11,7 +11,7 @@ Development Lead
 Contributors
 ------------
 
-None yet. Why not be the first?
+* Henry Drake <https://github.com/hdrake>
 
 Other
 -----
