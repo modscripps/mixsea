@@ -2,11 +2,11 @@ name: mixsea-rtfd
 channels:
   - conda-forge
 dependencies:
-  - python=3.6
+  - python=3.8
   - numpy>=1.15
   - gsw
   - scipy
-  - matplotlib
+  - matplotlib>=3.4.0
   - ipykernel
   - sphinxcontrib-bibtex<2.0.0
   - nbsphinx

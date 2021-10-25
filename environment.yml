@@ -1,6 +1,6 @@
 name: mixsea
 dependencies:
-  - python=3.8
+  - python>=3.8
   - numpy>=1.15
   - scipy
   - gsw
