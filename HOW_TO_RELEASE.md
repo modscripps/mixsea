@@ -2,9 +2,9 @@ How to issue a mixsea release
 -----------------------------
 Copied and adjusted from xarray.
 
-1. Ensure your master branch is synced to upstream:
+1. Ensure your main branch is synced to upstream:
      ```
-     git pull upstream master
+     git pull upstream main
      ```
 2. Look over HISTORY.rst and make sure it is complete for the current version.
     (check the date!) Consider adding a brief summary note describing the
@@ -26,7 +26,7 @@ Copied and adjusted from xarray.
      bump2version patch # possible: major / minor / patch
      ```
      This will change the version number in `setup.py`, `setup.cfg` and `mixsea/__init.py__`.
-6. On the master branch, commit the release in git:
+6. On the main branch, commit the release in git:
      ```
      git commit -am 'Release v0.X.Y'
      ```
@@ -58,17 +58,17 @@ Copied and adjusted from xarray.
      ```
     You will need to be listed as a package owner at
     https://pypi.python.org/pypi/mixsea for this to work.
-12. Push your changes to master:
+12. Push your changes to main:
      ```
-     git push upstream master
+     git push upstream main
      git push upstream --tags
      ```
-13. Update the stable branch (used by ReadTheDocs) and switch back to master:
+13. Update the stable branch (used by ReadTheDocs) and switch back to main:
      ```
      git checkout stable
-     git rebase master
+     git rebase main
      git push upstream stable
-     git checkout master
+     git checkout main
      ```
     It's OK to force push to 'stable' if necessary. (We also update the stable 
     branch with `git cherrypick` for documentation only fixes that apply the 
@@ -99,12 +99,12 @@ Copied and adjusted from xarray.
      Internal Changes
      ~~~~~~~~~~~~~~~~
      ```
-15. Commit your changes and push to master again:
+15. Commit your changes and push to main again:
       ```
       git commit -am 'New whatsnew section'
-      git push upstream master
+      git push upstream main
       ```
-    You're done pushing to master!
+    You're done pushing to main!
 16. Issue the release on GitHub. Click on "Draft a new release" at
     https://github.com/modscripps/mixsea/releases. Type in the version number, but
     don't bother to describe it -- we maintain that on the docs instead.
