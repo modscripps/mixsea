@@ -37,7 +37,7 @@ script:
   - black --check mixsea/
 
 # safelist
-#branches:
-#  only:
-#  - master
-#  - stable
+branches:
+  only:
+  - main
+  - stable
