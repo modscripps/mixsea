@@ -49,4 +49,4 @@ or in developer mode (to immediately apply changes you make to the source code):
 
 
 .. _Github repo: https://github.com/modscripps/mixsea
-.. _tarball: https://github.com/modscripps/mixsea/tarball/master
+.. _tarball: https://github.com/modscripps/mixsea/tarball/main
