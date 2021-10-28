@@ -84,7 +84,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "mixsea"
-copyright = "2020, mixsea Developers"
+copyright = "2021, mixsea Developers"
 author = "mixsea Developers"
 
 # The version info for the project you're documenting, acts as replacement
