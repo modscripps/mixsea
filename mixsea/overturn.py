@@ -100,7 +100,8 @@ def eps_overturn(
     dnoise : float, optional
             Noise level of density [kg/m^3] or conservative temperature [°C], depending on overturns_from_CT. Default is 5e-4.
     alpha : float, optional
-            Constant of proportionality between Thorpe and Ozmidov scale. Default is 0.95.
+            Ratio of Ozmidov scale to Thorpe scale (Dillon 1982, Ferron 1998). Default is 0.95.
+            Convert to Thorpe 1977 conventions with C0 = alpha**2.
     Roc : float, optional
             Critical value of the overturn ratio Ro. An overturn will be considered
             noise if Ro < Roc.
