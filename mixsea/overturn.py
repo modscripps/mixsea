@@ -100,8 +100,10 @@ def eps_overturn(
     dnoise : float, optional
             Noise level of density [kg/m^3] or conservative temperature [°C], depending on overturns_from_CT. Default is 5e-4.
     alpha : float, optional
-            Ratio of Ozmidov scale to Thorpe scale (Dillon 1982, Ferron 1998). Default is 0.95.
+            Ratio of Ozmidov scale to Thorpe scale, alpha = Lo/Lt. Default is 0.95. Care must be taken to choose 
+            a value appropriate for the setting, e.g. Dillon 1982 [1]_, Ferron et al. 1998 [2]_. 
             Convert to Thorpe 1977 conventions with C0 = alpha**2.
+            Not to be confused with alpha in Equation 4 from Thorpe 1977, which is the inverse of our alpha. 
     Roc : float, optional
             Critical value of the overturn ratio Ro. An overturn will be considered
             noise if Ro < Roc.
@@ -129,7 +131,11 @@ def eps_overturn(
             Background stratification of each overturn detected [s^-2]
     diag : dict, optional
             Dictionary of diagnositc variables, set return with the `return_diagnostics' argument.
-
+            
+    References
+    ----------
+    .. [1] Dillon, T. M. (1982). Vertical overturns: A comparison of Thorpe and Ozmidov length scales. Journal of Geophysical Research, 87(C12), 9601.
+    .. [2] Ferron, B., Mercier, H., Speer, K., Gargett, A., & Polzin, K. (1998). Mixing in the Romanche Fracture Zone. Journal of Physical Oceanography, 28(10), 1929–1945.
 
     """
     depth = np.asarray(depth)
