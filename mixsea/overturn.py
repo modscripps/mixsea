@@ -396,7 +396,7 @@ def thorpe_scale(depth, q, dnoise):
             "It appears that depth is not monotonically increasing, please fix."
         )
 
-    idx_sorted, idx_patches = find_overturns(q, combine_gap=0)
+    idx_sorted, idx_patches = find_overturns(q)
 
     ndata = depth.size
 
