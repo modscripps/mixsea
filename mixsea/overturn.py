@@ -447,17 +447,15 @@ def thorpe_scale(depth, q, dnoise):
     return Lt, thorpe_disp, q_sorted, noise_flag, ends_flag, Ro, idx_patches, idx_sorted
 
 
-def find_overturns(q, combine_gap=0):
-    """Find the indices of unstable patches.
+def find_overturns(q):
+    """Find the indices of unstable patches by cumulatively summing the difference between
+    sorted and unsorted indices of q.
 
     Parameters
     ----------
     q : array_like 1D
             Profile of some quantity from which overturns can be detected
             e.g. temperature or density.
-    combine_gap : float, optional
-            Combine overturns that are separated by less than a given number of points.
-            Default is 0.
 
     Returns
     -------
