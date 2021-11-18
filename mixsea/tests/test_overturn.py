@@ -72,3 +72,12 @@ def test_thorpe_scale():
     assert np.isclose(q_sorted, rho_s).all()
     assert np.isclose(np.unique(Lt[inoverturn])[0], Lt_analytical)
     assert np.isclose(np.unique(Ro[inoverturn])[0], 0.5, atol=0.02)
+
+
+def test_contiguous_regions():
+    condition = np.array(
+        [True, True, False, False, True, True, True, False, True, True]
+    )
+    idx = np.array([[0, 2], [4, 7], [8, 10]])
+
+    assert np.all(overturn.contiguous_regions(condition) == idx)

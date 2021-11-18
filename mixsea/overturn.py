@@ -229,12 +229,12 @@ def eps_overturn(
             noise_flag,
             ends_flag,
             Ro,
-            patches,
+            idx_patches,
             sidx,
         ) = thorpe_scale(depth, q, dnoise)
 
         # If there are no overturns, move on to the next pressure bin.
-        if not np.any(patches):
+        if not np.any(idx_patches):
             continue
 
         # Thorpe displacements (by definition relative to initial locations, so unsorted)
@@ -251,11 +251,11 @@ def eps_overturn(
         N2_flag = np.full_like(depth, False, dtype=bool)
         Ro_flag = np.full_like(depth, False, dtype=bool)
 
-        for patch in patches:
+        for patch in idx_patches:
             # Get patch indices.
             i0 = patch[0]
-            i1 = patch[1] + 1  # Need +1 for last point in overturn.
-            pidx = np.arange(i0, i1 + 1, 1)  # Need another + 1 for python indexing
+            i1 = patch[1]
+            pidx = np.arange(i0, i1 + 1, 1)  # Need +1 for Python indexing
 
             Lto = np.unique(Lt[pidx])
 
@@ -379,8 +379,10 @@ def thorpe_scale(depth, q, dnoise):
             True if a patch includes and end point
     Ro : ndarray
             Overturn ratio of Gargett & Garner.
-    patches : ndarray
-            Indices of overturning patches, e.g. patches[:, 0] are start indices and patches[:, 1] are end indices.
+    idx_patches : ndarray
+            Indices of overturning patches, e.g. idx_patches[:, 0] are start indices and idx_patches[:, 1] are end indices.
+    idx_sorted : ndarray
+            Indices required to sort q so as to generate q_sorted.
     """
 
     depth = np.asarray(depth)
@@ -394,7 +396,7 @@ def thorpe_scale(depth, q, dnoise):
             "It appears that depth is not monotonically increasing, please fix."
         )
 
-    idx_sorted, patches = find_overturns(q, combine_gap=0)
+    idx_sorted, idx_patches = find_overturns(q, combine_gap=0)
 
     ndata = depth.size
 
@@ -412,11 +414,11 @@ def thorpe_scale(depth, q, dnoise):
     dz = 0.5 * (depth[2:] - depth[:-2])  # 'width' of each data point
     dz = np.hstack((dz[0], dz, dz[-1]))  # assume width of first and last data point
 
-    for patch in patches:
+    for patch in idx_patches:
         # Get patch indices.
         i0 = patch[0]
-        i1 = patch[1] + 1  # Need +1 for last point in overturn.
-        pidx = np.arange(i0, i1 + 1, 1)  # Need another +1 for Python indexing
+        i1 = patch[1]
+        pidx = np.arange(i0, i1 + 1, 1)  # Need +1 for Python indexing
 
         # Thorpe scale is the root mean square thorpe displacement.
         Lto = np.sqrt(np.mean(np.square(thorpe_disp[pidx])))
@@ -442,7 +444,7 @@ def thorpe_scale(depth, q, dnoise):
         Roo = np.minimum(L_neg / L_tot, L_pos / L_tot)
         Ro[pidx] = Roo
 
-    return Lt, thorpe_disp, q_sorted, noise_flag, ends_flag, Ro, patches, idx_sorted
+    return Lt, thorpe_disp, q_sorted, noise_flag, ends_flag, Ro, idx_patches, idx_sorted
 
 
 def find_overturns(q, combine_gap=0):
@@ -468,7 +470,7 @@ def find_overturns(q, combine_gap=0):
     idx = np.arange(q.size, dtype=int)
     idx_sorted = np.argsort(q, kind="mergesort")
     idx_cumulative = np.cumsum(idx_sorted - idx)
-    idx_patches = _consec_blocks(np.where(idx_cumulative > 0)[0], combine_gap)
+    idx_patches = contiguous_regions(idx_cumulative > 0)
     return idx_sorted, idx_patches
 
 
@@ -554,60 +556,41 @@ def intermediate_profile(q, acc=5e-4, hinge=1000, kind="down"):
     return qi
 
 
-def _consec_blocks(idx=None, combine_gap=0, combine_run=0):
+def contiguous_regions(condition):
+    """Finds the indices of contiguous True regions in a boolean array.
+
+    Parameters
+    ----------
+    condition : array_like
+            Array of boolean values.
+
+    Returns
+    -------
+    idx : ndarray
+            Array of indices demarking the start and end of contiguous True regions in condition.
+            Shape is (N, 2) where N is the number of regions.
+
+    Notes
+    -----
+    Modified from stack overflow: https://stackoverflow.com/a/4495197
+
     """
-    block_idx = consec_blocks(idx,combine_gap=0, combine_run=0)
 
-    Routine that returns the start and end indexes of the consecutive blocks
-    of the index array (idx). The second argument combines consecutive blocks
-    together that are separated by <= combine. This is useful when you want
-    to perform some action on the n number of data points either side of a
-    gap, say, and don't want that action to be effected by a neighbouring
-    gap.
+    d = np.diff(condition)
+    (idx,) = d.nonzero()
 
-    From Glenn Carter, University of Hawaii
-    """
-    if idx.size == 0:
-        return np.array([])
+    # We need to start things after the change in "condition". Therefore,
+    # we'll shift the index by 1 to the right.
+    idx += 1
 
-    # Sort the index data and remove any identical points
-    idx = np.unique(idx)
+    if condition[0]:
+        # If the start of condition is True prepend a 0
+        idx = np.r_[0, idx]
 
-    # Find the block boundaries
-    didx = np.diff(idx)
-    ii = np.concatenate(((didx > 1).nonzero()[0], np.atleast_1d(idx.shape[0] - 1)))
+    if condition[-1]:
+        # If the end of condition is True, append the length of the array
+        idx = np.r_[idx, condition.size]  # Edit
 
-    # Create the block_idx array
-    block_idx = np.zeros((ii.shape[0], 2), dtype=int)
-    block_idx[0, :] = [idx[0], idx[ii[0]]]
-    for c in range(1, ii.shape[0]):
-        block_idx[c, 0] = idx[ii[c - 1] + 1]
-        block_idx[c, 1] = idx[ii[c]]
-
-    # Find the gap between and combine blocks that are closer together than
-    # the combine_gap threshold
-    gap = (block_idx[1:, 0] - block_idx[0:-1, 1]) - 1
-    if np.any(gap <= combine_gap):
-        count = 0
-        new_block = np.zeros(block_idx.shape, dtype=int)
-        new_block[0, 0] = block_idx[0, 0]
-        for ido in range(block_idx.shape[0] - 1):
-            if gap[ido] > combine_gap:
-                new_block[count, 1] = block_idx[ido, 1]
-                count += 1
-                new_block[count, 0] = block_idx[ido + 1, 0]
-        new_block[count, 1] = block_idx[-1, 1]
-        block_idx = new_block[: count + 1, :]
-
-    # Combine any runs that are shorter than the combine_run threshold
-    runlength = block_idx[:, 1] - block_idx[:, 0]
-    if np.any(runlength <= combine_run):
-        count = 0
-        new_block = np.zeros(block_idx.shape, dtype=int)
-        for ido in range(block_idx.shape[0]):
-            if runlength[ido] > combine_run:
-                new_block[count, :] = block_idx[ido, :]
-                count += 1
-        block_idx = new_block[:count, :]
-
-    return np.atleast_2d(block_idx)
+    # Reshape the result into two columns
+    idx.shape = (-1, 2)
+    return idx
