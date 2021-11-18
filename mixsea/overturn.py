@@ -102,7 +102,7 @@ def eps_overturn(
     alpha : float, optional
             Ratio of Ozmidov scale to Thorpe scale, alpha = Lo/Lt. Default is 0.95. Care must be taken to choose 
             a value appropriate for the setting, e.g. Dillon 1982 [1]_, Ferron et al. 1998 [2]_. 
-            Convert to Thorpe 1977 conventions with C0 = alpha**2.
+            Convert to Thorpe 1977 [3]_ conventions with C0 = alpha**2.
             Not to be confused with alpha in Equation 4 from Thorpe 1977, which is the inverse of our alpha. 
     Roc : float, optional
             Critical value of the overturn ratio Ro. An overturn will be considered
@@ -136,6 +136,7 @@ def eps_overturn(
     ----------
     .. [1] Dillon, T. M. (1982). Vertical overturns: A comparison of Thorpe and Ozmidov length scales. Journal of Geophysical Research, 87(C12), 9601.
     .. [2] Ferron, B., Mercier, H., Speer, K., Gargett, A., & Polzin, K. (1998). Mixing in the Romanche Fracture Zone. Journal of Physical Oceanography, 28(10), 1929–1945.
+    .. [3] Thorpe, S. A. (1977). Turbulence and Mixing in a Scottish Loch. Philosophical Transactions of the Royal Society of London. Series A, Mathematical and Physical Sciences, 286(1334), 125–181. 
 
     """
     depth = np.asarray(depth)
