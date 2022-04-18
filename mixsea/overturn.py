@@ -6,8 +6,6 @@ def nan_eps_overturn(
     depth,
     t,
     SP,
-    lon,
-    lat,
     **kwargs,
 ):
     """
@@ -29,7 +27,7 @@ def nan_eps_overturn(
 
     isnan = ~notnan
     if isnan.sum() == 0:  # If there are no NaNs then return.
-        return eps_overturn(depth, t, SP, lon, lat, **kwargs)
+        return eps_overturn(depth, t, SP, **kwargs)
 
     eps = np.full_like(depth, np.nan)
     N2 = np.full_like(depth, np.nan)
@@ -44,8 +42,6 @@ def nan_eps_overturn(
         depth[notnan],
         t[notnan],
         SP[notnan],
-        lon,
-        lat,
         return_diagnostics=True,
         **kwargs,
     )
@@ -69,8 +65,8 @@ def eps_overturn(
     depth,
     t,
     SP,
-    lon,
-    lat,
+    lon=0.0,
+    lat=0.0,
     dnoise=5e-4,
     alpha=0.95,
     Roc=0.2,
@@ -78,6 +74,9 @@ def eps_overturn(
     use_ip=False,
     N2_method="teos",
     overturns_from_CT=False,
+    pbinwidth=1000,
+    EOS="gsw",
+    linear_EOS_params=(1000, 2e-4, 7e-4),
     return_diagnostics=False,
 ):
     """
@@ -89,14 +88,13 @@ def eps_overturn(
     depth : array-like
             Depth [m]
     t : array-like
-            In-situ temperature [ITS90, °C]
+            Temperature in degrees Celcius. When using observed in-situ temperature (e.g. a CTD cast) it should have ITS90 °C units. 
     SP : float or array-like
-            Salinity [PSU]. Can be a single constant value. This may be convenient if only temperature data
-            are available.
-    lon : float
-            Longitude of observation
-    lat : float
-            Latitude of observation
+            Practical salinity [PSU]. Can be a single constant value.
+    lon : float, optional
+            Longitude of observation (improves accuracy of TEOS-10 EOS)
+    lat : float, optional
+            Latitude of observation (improves accuracy of TEOS-10 EOS)
     dnoise : float, optional
             Noise level of density [kg/m^3] or conservative temperature [°C], depending on overturns_from_CT. Default is 5e-4.
     alpha : float, optional
@@ -105,7 +103,7 @@ def eps_overturn(
             Critical value of the overturn ratio Ro. An overturn will be considered
             noise if Ro < Roc.
     background_eps : float, optional
-            Background epsilon where no overturn detected. Defaults to numpy.nan.
+            Background epsilon where no overturn detected. Defaults to NaN.
     use_ip : bool, optional
             Sets whether to use the intermediate profile method. Default is False. If True,
             the dnoise parameter is passed as the `accuracy' argument of the intermediate
@@ -116,6 +114,19 @@ def eps_overturn(
     overturns_from_CT : bool, optional
             If true, overturning patches will be diagnosed from the conservative temperature CT,
             instead of potential density. Default is False.
+    pbinwidth : float, optional
+            Potential density is not valid far from its reference pressure. For deep profiles, we loop over pressure bins.
+            The pbinwidth parameter [dbar] sets the width of bins used for looping. Default is 1000, e.g. a 2000 dbar profile will use
+            two different reference densities. 
+    EOS : string, optional
+            Equation of state, which can either be 'gsw' denoting TOES-10 or linear. The default is 'gsw'.
+            If you choose linear, the N2_method must be either 'bulk' or 'endpt'.
+            
+            Density anomaly for the linear equation of state is calculated as rho0*(1 - a*t + b*SP)
+            (see parameter definitions below).
+    linear_EOS_params : tuple of floats, optional
+            Tuple of parameters (rho0, a, b) where rho0 is a constant density [kg/m^3], a is the thermal expansion 
+            coefficient [1/°C] and b is the saline expansion coefficient [kg/g]. The defaults are (1000, 2e-4, 7e-4).
     return_diagnostics : bool, optional
             Default is False. If True, this function will return a dictionary containing
             variables such as the Thorpe scale Lt, etc.
@@ -137,7 +148,7 @@ def eps_overturn(
 
     if not np.all(np.isclose(np.maximum.accumulate(depth), depth)):
         raise ValueError(
-            "It appears that depth is not monotonically increasing, please fix."
+            "Depth is not monotonically increasing, please fix."
         )
 
     if SP.size == 1:
@@ -145,25 +156,37 @@ def eps_overturn(
 
     if not (depth.size == t.size == SP.size):
         raise ValueError(
-            "Input array sizes do not match. depth.size = {}, t.size = {}, SP.size = {}".format(
-                depth.size, t.size, SP.size
-            )
+            f"Input array sizes do not match. depth.size = {depth.size}, t.size = {t.size}, SP.size = {SP.size}"
         )
 
     if not any(s == N2_method for s in ["teosp1", "teos", "endpt", "bulk"]):
         raise ValueError(
-            "The 'N2_method' argument must be 'teosp1', 'teos', 'endpt' or 'bulk'."
+            f"N2_method = {N2_method} invalid. It must be 'teosp1', 'teos', 'endpt' or 'bulk'."
         )
+        
+    if not any(s == EOS for s in ["gsw", "linear"]):
+        raise ValueError(
+            "The 'EOS' argument must be 'gsw' or 'linear'."
+        )
+        
+    if (EOS == "linear") and overturns_from_CT:
+        raise ValueError("Linear EOS incompatible with overturn detection using conservative temperature.")
+        
+    if (EOS == "linear") and any(s == N2_method for s in ["teosp1", "teos"]):
+        raise ValueError(f"Linear EOS incompatible with N2_method = '{N2_method}'.")
 
     ndata = depth.size
 
     # Estimate pressure from depth.
     p = gsw.p_from_z(-depth, lat)
+
+    if EOS == "gsw":
+        SA = gsw.SA_from_SP(SP, t, lon, lat)
+        CT = gsw.CT_from_t(SA, t, p)
+        
+    # Estimate 'width' of data... I think our method only works for evenly spaced data so this might be redundant.
     dz = 0.5 * (depth[2:] - depth[:-2])  # 'width' of each data point
     dz = np.hstack((dz[0], dz, dz[-1]))  # assume width of first and last data point
-
-    SA = gsw.SA_from_SP(SP, t, lon, lat)
-    CT = gsw.CT_from_t(SA, t, p)
 
     # Initialise arrays for diagnostic variables and flags.
     diag = {}
@@ -176,8 +199,6 @@ def eps_overturn(
         "dens",
         "dens_sorted",
         "Ro",
-        "SA_sorted",
-        "CT_sorted",
     ]
     for var in diagvar:
         diag[var] = np.full_like(depth, np.nan)
@@ -195,19 +216,26 @@ def eps_overturn(
     # Potential density is only meaningful near the reference pressure. For a deep profile
     # we may need to select several reference pressures. To do so, we find the pressure
     # bins that best contain the data
-    pbinwidth = 1000.0  # In future we could have this as an argument.
-    pbinmin = np.floor(p.min() / pbinwidth) * pbinwidth
-    pbinmax = np.ceil(p.max() / pbinwidth) * pbinwidth
-    pbins = np.arange(pbinmin, pbinmax + pbinwidth, pbinwidth)
-    p_refs = 0.5 * (
-        pbins[1:] + pbins[:-1]
-    )  # Use mid point pressure as reference pressure.
-    nbins = p_refs.size
+    if EOS == "gsw":
+        pbinmin = np.floor(p.min() / pbinwidth) * pbinwidth
+        pbinmax = np.ceil(p.max() / pbinwidth) * pbinwidth
+        pbins = np.arange(pbinmin, pbinmax + pbinwidth, pbinwidth)
+        p_refs = 0.5 * (
+            pbins[1:] + pbins[:-1]
+        )  # Use mid point pressure as reference pressure.
+        nbins = p_refs.size
+    elif EOS == "linear":
+        pbins = [-100000, 1000000]
+        nbins = 1
 
     # Loop over pressure bins.
     for idx_bin in range(nbins):
 
-        dens = gsw.pot_rho_t_exact(SA, t, p, p_ref=p_refs[idx_bin])
+        if EOS == "gsw":
+            dens = gsw.pot_rho_t_exact(SA, t, p, p_ref=p_refs[idx_bin])
+        elif EOS == "linear":
+            rho0, a, b = linear_EOS_params
+            dens = rho0*(1 - a*t + b*SP)
 
         if overturns_from_CT:
             # Temperature normally decreases towards the bottom which would mean the
@@ -243,14 +271,17 @@ def eps_overturn(
 
         # Sort other quantities based on the sorting indices.
         dens_sorted = dens[sidx]
-        SA_sorted = SA[sidx]
-        CT_sorted = CT[sidx]
+        
+        if EOS == "gsw":
+            SA_sorted = SA[sidx]
+            CT_sorted = CT[sidx]
 
         # Temporary arrays.
         N2 = np.full_like(depth, np.nan)
         N2_flag = np.full_like(depth, False, dtype=bool)
         Ro_flag = np.full_like(depth, False, dtype=bool)
-
+        
+        # --->> Calculate Buoyancy Frequency <<---
         for patch in idx_patches:
             # Get patch indices.
             i0 = patch[0]
@@ -281,7 +312,7 @@ def eps_overturn(
             elif N2_method == "bulk":
                 g = gsw.grav(lat, p[pidx].mean())
                 densanom = dens[pidx] - dens_sorted[pidx]
-                densrms = np.sqrt(np.mean(densanom ** 2))
+                densrms = np.sqrt(np.mean(densanom**2))
                 N2o = g * densrms / (Lto * np.mean(dens[pidx]))
             elif N2_method == "endpt":
                 g = gsw.grav(lat, p[pidx].mean())
@@ -319,8 +350,6 @@ def eps_overturn(
         diag["sidx"][inbin] = sidx[inbin]
         diag["dens"][inbin] = dens[inbin]
         diag["dens_sorted"][inbin] = dens_sorted[inbin]
-        diag["CT_sorted"][inbin] = CT_sorted[inbin]
-        diag["SA_sorted"][inbin] = SA_sorted[inbin]
 
         if use_ip and not overturns_from_CT:
             diag["dens_ip"][inbin] = q[inbin]
@@ -331,7 +360,7 @@ def eps_overturn(
     # Finally calculate epsilon for diagnostics, avoid nans, inf and negative N2.
     isgood = np.isfinite(diag["N2"]) & np.isfinite(diag["Lt"]) & ~diag["N2_flag"]
     diag["eps"][isgood] = (
-        alpha ** 2 * diag["Lt"][isgood] ** 2 * diag["N2"][isgood] ** 1.5
+        alpha**2 * diag["Lt"][isgood] ** 2 * diag["N2"][isgood] ** 1.5
     )
 
     # Use flags to get rid of bad overturns in basic output
