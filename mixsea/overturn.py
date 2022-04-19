@@ -76,7 +76,7 @@ def eps_overturn(
     overturns_from_CT=False,
     pbinwidth=1000,
     EOS="gsw",
-    linear_EOS_params=(1000, 2e-4, 7e-4),
+    linear_EOS_params=dict(rho0=1025, a=2e-4, b=7e-4, SP0=35, t0=15),
     return_diagnostics=False,
 ):
     """
@@ -88,7 +88,7 @@ def eps_overturn(
     depth : array-like
             Depth [m]
     t : array-like
-            Temperature in degrees Celcius. When using observed in-situ temperature (e.g. a CTD cast) it should have ITS90 °C units. 
+            Temperature in degrees Celcius. When using observed in-situ temperature (e.g. a CTD cast) it should have ITS90 °C units.
     SP : float or array-like
             Practical salinity [PSU]. Can be a single constant value.
     lon : float, optional
@@ -120,16 +120,17 @@ def eps_overturn(
     pbinwidth : float, optional
             Potential density is not valid far from its reference pressure. For deep profiles, we loop over pressure bins.
             The pbinwidth parameter [dbar] sets the width of bins used for looping. Default is 1000, e.g. a 2000 dbar profile will use
-            two different reference densities. 
+            two bins and two different reference densities.
     EOS : string, optional
             Equation of state, which can either be 'gsw' denoting TOES-10 or linear. The default is 'gsw'.
             If you choose linear, the N2_method must be either 'bulk' or 'endpt'.
-            
-            Density anomaly for the linear equation of state is calculated as rho0*(1 - a*t + b*SP)
+
+            Density anomaly for the linear equation of state is calculated as rho0*(1 - a*(t-t0) + b*(SP-SP0))
             (see parameter definitions below).
-    linear_EOS_params : tuple of floats, optional
-            Tuple of parameters (rho0, a, b) where rho0 is a constant density [kg/m^3], a is the thermal expansion 
-            coefficient [1/°C] and b is the saline expansion coefficient [kg/g]. The defaults are (1000, 2e-4, 7e-4).
+    linear_EOS_params : dict of floats, optional
+            Dict of parameters rho0, a, b, SP0 and t0, where rho0 is a constant density [kg/m^3], a is the thermal expansion
+            coefficient [1/°C] and b is the saline expansion coefficient [kg/g] and SP0 and t0 are constants for salinity [g/kg] and temperature [°C].
+            The defaults are dict(rho0=1025, a=2e-4, b=7e-4, SP0=35, t0=15).
     return_diagnostics : bool, optional
             Default is False. If True, this function will return a dictionary containing
             variables such as the Thorpe scale Lt, etc.
@@ -155,9 +156,7 @@ def eps_overturn(
     SP = np.asarray(SP)
 
     if not np.all(np.isclose(np.maximum.accumulate(depth), depth)):
-        raise ValueError(
-            "Depth is not monotonically increasing, please fix."
-        )
+        raise ValueError("Depth is not monotonically increasing, please fix.")
 
     if SP.size == 1:
         SP = np.full_like(depth, SP)
@@ -171,15 +170,15 @@ def eps_overturn(
         raise ValueError(
             f"N2_method = {N2_method} invalid. It must be 'teosp1', 'teos', 'endpt' or 'bulk'."
         )
-        
+
     if not any(s == EOS for s in ["gsw", "linear"]):
-        raise ValueError(
-            "The 'EOS' argument must be 'gsw' or 'linear'."
-        )
-        
+        raise ValueError("The 'EOS' argument must be 'gsw' or 'linear'.")
+
     if (EOS == "linear") and overturns_from_CT:
-        raise ValueError("Linear EOS incompatible with overturn detection using conservative temperature.")
-        
+        raise ValueError(
+            "Linear EOS incompatible with overturn detection using conservative temperature."
+        )
+
     if (EOS == "linear") and any(s == N2_method for s in ["teosp1", "teos"]):
         raise ValueError(f"Linear EOS incompatible with N2_method = '{N2_method}'.")
 
@@ -191,7 +190,7 @@ def eps_overturn(
     if EOS == "gsw":
         SA = gsw.SA_from_SP(SP, t, lon, lat)
         CT = gsw.CT_from_t(SA, t, p)
-        
+
     # Estimate 'width' of data... I think our method only works for evenly spaced data so this might be redundant.
     dz = 0.5 * (depth[2:] - depth[:-2])  # 'width' of each data point
     dz = np.hstack((dz[0], dz, dz[-1]))  # assume width of first and last data point
@@ -242,8 +241,7 @@ def eps_overturn(
         if EOS == "gsw":
             dens = gsw.pot_rho_t_exact(SA, t, p, p_ref=p_refs[idx_bin])
         elif EOS == "linear":
-            rho0, a, b = linear_EOS_params
-            dens = rho0*(1 - a*t + b*SP)
+            dens = pot_rho_linear(SP, t, **linear_EOS_params)
 
         if overturns_from_CT:
             # Temperature normally decreases towards the bottom which would mean the
@@ -279,7 +277,7 @@ def eps_overturn(
 
         # Sort other quantities based on the sorting indices.
         dens_sorted = dens[sidx]
-        
+
         if EOS == "gsw":
             SA_sorted = SA[sidx]
             CT_sorted = CT[sidx]
@@ -288,7 +286,7 @@ def eps_overturn(
         N2 = np.full_like(depth, np.nan)
         N2_flag = np.full_like(depth, False, dtype=bool)
         Ro_flag = np.full_like(depth, False, dtype=bool)
-        
+
         # --->> Calculate Buoyancy Frequency <<---
         for patch in idx_patches:
             # Get patch indices.
@@ -385,6 +383,36 @@ def eps_overturn(
         return eps, N2, diag
     else:
         return eps, N2
+
+
+def pot_rho_linear(SP, t, rho0=1025, a=2e-4, b=7e-4, SP0=35, t0=15):
+    """
+    Potential density calculated using a linear equation of state:
+
+
+    Parameters
+    ----------
+    SP : array-like
+            Salinity [g/kg]
+    t : array-like
+            Temperature [°C]
+    rho0 : float, optional
+            Constant density [kg/m^3]
+    a : float, optional
+            Thermal expansion coefficient [1/°C]
+    b : float, optional
+            saline expansion coefficient [kg/g]
+    SP0 : float, optional
+            Constant salinity [g/kg]
+    t0 : float, optional
+            Constant temperature [°C]
+
+    Returns
+    -------
+    pot_rho : ndarray
+        Potential density [kg/m^3]
+    """
+    return rho0 * (1 - a * (t - t0) + b * (SP - SP0))
 
 
 def thorpe_scale(depth, q, dnoise):
