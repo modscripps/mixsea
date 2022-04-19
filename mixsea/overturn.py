@@ -122,10 +122,10 @@ def eps_overturn(
             The pbinwidth parameter [dbar] sets the width of bins used for looping. Default is 1000, e.g. a 2000 dbar profile will use
             two bins and two different reference densities.
     EOS : string, optional
-            Equation of state, which can either be 'gsw' denoting TOES-10 or linear. The default is 'gsw'.
-            If you choose linear, the N2_method must be either 'bulk' or 'endpt'.
+            Equation of state, which can either be 'gsw' denoting TOES-10 or 'linear'. The default is 'gsw'.
+            If you choose 'linear', the N2_method must be either 'bulk' or 'endpt'.
 
-            Density anomaly for the linear equation of state is calculated as rho0*(1 - a*(t-t0) + b*(SP-SP0))
+            For the linear equation of state, density is calculated as rho0*(1 - a*(t-t0) + b*(SP-SP0))
             (see parameter definitions below).
     linear_EOS_params : dict of floats, optional
             Dict of parameters rho0, a, b, SP0 and t0, where rho0 is a constant density [kg/m^3], a is the thermal expansion
@@ -183,7 +183,7 @@ def eps_overturn(
     p = gsw.p_from_z(-depth, lat)
 
     if EOS == "gsw":
-        SA = gsw.SA_from_SP(SP, t, lon, lat)
+        SA = gsw.SA_from_SP(SP, p, lon, lat)
         CT = gsw.CT_from_t(SA, t, p)
 
     # Estimate 'width' of data... I think our method only works for evenly spaced data so this might be redundant.
@@ -524,7 +524,7 @@ def find_overturns(q):
             Start and end indices of the overturns.
 
     """
-    idx = np.arange(q.size, dtype=int)
+    idx = np.arange(len(q), dtype=int)
     idx_sorted = np.argsort(q, kind="mergesort")
     idx_cumulative = np.cumsum(idx_sorted - idx)
     idx_patches = contiguous_regions(idx_cumulative > 0)
