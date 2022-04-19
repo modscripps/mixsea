@@ -73,7 +73,7 @@ def eps_overturn(
     background_eps=np.nan,
     use_ip=False,
     N2_method="teos",
-    overturns_from_CT=False,
+    overturns_from_t=False,
     pbinwidth=1000,
     EOS="gsw",
     linear_EOS_params=dict(rho0=1025, a=2e-4, b=7e-4, SP0=35, t0=15),
@@ -88,15 +88,15 @@ def eps_overturn(
     depth : array-like
             Depth [m]
     t : array-like
-            Temperature in degrees Celcius. When using observed in-situ temperature (e.g. a CTD cast) it should have ITS90 °C units.
+            Temperature [°C]. If using gsw equation of state, it should have ITS90 °C units. 
     SP : float or array-like
-            Practical salinity [PSU]. Can be a single constant value.
+            Practical salinity [g/kg]. Can be a single constant value.
     lon : float, optional
             Longitude of observation (improves accuracy of TEOS-10 EOS)
     lat : float, optional
             Latitude of observation (improves accuracy of TEOS-10 EOS)
     dnoise : float, optional
-            Noise level of density [kg/m^3] or conservative temperature [°C], depending on overturns_from_CT. Default is 5e-4.
+            Noise level of density [kg/m^3] or temperature [°C], depending on overturns_from_t. Default is 5e-4.
     alpha : float, optional
             Ratio of Ozmidov scale to Thorpe scale, alpha = Lo/Lt. Default is 0.95. Care must be taken to choose
             a value appropriate for the setting, e.g. Dillon 1982 [1]_, Ferron et al. 1998 [2]_.
@@ -114,9 +114,9 @@ def eps_overturn(
     N2_method : string, optional
             Method for calculation of buoyancy frequency. Default is 'teosp1'. Options are 'bulk',
             'endpt', 'teos' and 'teosp1'.
-    overturns_from_CT : bool, optional
-            If true, overturning patches will be diagnosed from the conservative temperature CT,
-            instead of potential density. Default is False.
+    overturns_from_t : bool, optional
+            If true, overturning patches will be diagnosed from the temperature or conservative temperature,
+            depending on the equation of state. Default is False.
     pbinwidth : float, optional
             Potential density is not valid far from its reference pressure. For deep profiles, we loop over pressure bins.
             The pbinwidth parameter [dbar] sets the width of bins used for looping. Default is 1000, e.g. a 2000 dbar profile will use
@@ -174,11 +174,6 @@ def eps_overturn(
     if not any(s == EOS for s in ["gsw", "linear"]):
         raise ValueError("The 'EOS' argument must be 'gsw' or 'linear'.")
 
-    if (EOS == "linear") and overturns_from_CT:
-        raise ValueError(
-            "Linear EOS incompatible with overturn detection using conservative temperature."
-        )
-
     if (EOS == "linear") and any(s == N2_method for s in ["teosp1", "teos"]):
         raise ValueError(f"Linear EOS incompatible with N2_method = '{N2_method}'.")
 
@@ -202,7 +197,6 @@ def eps_overturn(
         "N2",
         "Lt",
         "thorpe_disp",
-        "sidx",
         "dens",
         "dens_sorted",
         "Ro",
@@ -210,11 +204,11 @@ def eps_overturn(
     for var in diagvar:
         diag[var] = np.full_like(depth, np.nan)
 
-    if use_ip and not overturns_from_CT:
+    if use_ip and not overturns_from_t:
         diag["dens_ip"] = np.full_like(depth, np.nan)
 
-    if use_ip and overturns_from_CT:
-        diag["CT_ip"] = np.full_like(depth, np.nan)
+    if use_ip and overturns_from_t:
+        diag["t_ip"] = np.full_like(depth, np.nan)
 
     flagvar = ["noise_flag", "N2_flag", "ends_flag", "Ro_flag"]
     for var in flagvar:
@@ -243,17 +237,20 @@ def eps_overturn(
         elif EOS == "linear":
             dens = pot_rho_linear(SP, t, **linear_EOS_params)
 
-        if overturns_from_CT:
+        if overturns_from_t:
             # Temperature normally decreases towards the bottom which would mean the
             # find_overturns algorithm thinks the whole water column is unstable! Minus fixes that.
-            q = -CT
+            if EOS == "gsw":
+                q = -CT
+            elif EOS == "linear":
+                q = -t
         else:
             q = dens
 
         if use_ip:  # Create intermediate density profile
             q = intermediate_profile(
                 q, acc=dnoise, hinge=1000, kind="down"
-            )  # TODO: make hinge optional
+            )
 
         # --->> THORPE SCALES <<---
         (
@@ -278,7 +275,7 @@ def eps_overturn(
         # Sort other quantities based on the sorting indices.
         dens_sorted = dens[sidx]
 
-        if EOS == "gsw":
+        if EOS == "gsw" and any(s == N2_method for s in ["teosp1", "teos"]):
             SA_sorted = SA[sidx]
             CT_sorted = CT[sidx]
 
@@ -353,15 +350,14 @@ def eps_overturn(
         diag["Lt"][inbin] = Lt[inbin]
         diag["Ro"][inbin] = Ro[inbin]
         diag["thorpe_disp"][inbin] = thorpe_disp[inbin]
-        diag["sidx"][inbin] = sidx[inbin]
         diag["dens"][inbin] = dens[inbin]
         diag["dens_sorted"][inbin] = dens_sorted[inbin]
 
-        if use_ip and not overturns_from_CT:
+        if use_ip and not overturns_from_t:
             diag["dens_ip"][inbin] = q[inbin]
 
-        if use_ip and overturns_from_CT:
-            diag["CT_ip"][inbin] = q[inbin]
+        if use_ip and overturns_from_t:
+            diag["t_ip"][inbin] = q[inbin]
 
     # Finally calculate epsilon for diagnostics, avoid nans, inf and negative N2.
     isgood = np.isfinite(diag["N2"]) & np.isfinite(diag["Lt"]) & ~diag["N2_flag"]
