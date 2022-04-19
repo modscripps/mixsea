@@ -309,8 +309,8 @@ def eps_shearstrain(eps0, Nm, N0, Ssh, Sshgm, Rw, f):
     """
     return (
         eps0
-        * (Nm ** 2 / N0 ** 2)
-        * (Ssh ** 2 / Sshgm ** 2)
+        * (Nm**2 / N0**2)
+        * (Ssh**2 / Sshgm**2)
         * (aspect_ratio_correction_shst(Rw) * latitude_correction(f, Nm))
     )
 
@@ -338,8 +338,8 @@ def eps_strain(eps0, Nm, N0, Sst, Sstgm, Rw, f):
     """
     return (
         eps0
-        * (Nm ** 2 / N0 ** 2)
-        * (Sst ** 2 / Sstgm ** 2)
+        * (Nm**2 / N0**2)
+        * (Sst**2 / Sstgm**2)
         * (aspect_ratio_correction_st(Rw) * latitude_correction(f, Nm))
     )
 
@@ -372,7 +372,7 @@ def diffusivity(eps, N, Gam=0.2):
         \kappa = \Gamma \frac{\epsilon}{N^2}
 
     """
-    return Gam * eps / N ** 2
+    return Gam * eps / N**2
 
 
 def gm_shear_variance(m, iim, N):
@@ -422,7 +422,7 @@ def gm_shear_variance(m, iim, N):
     E0 = 6.3e-5  # GM76 energy level
     Pgm = (
         (3 * np.pi * E0 * b * jstar / 2)
-        * m ** 2
+        * m**2
         / (m + jstar * np.pi / b * N / N0) ** 2
     )
     # integrate
@@ -479,7 +479,7 @@ def gm_strain_variance(m, iim, N):
     b = 1300  # thermocline scale depth
     jstar = 3
     E0 = 6.3e-5  # GM energy level
-    Pgm = (np.pi * E0 * b * jstar / 2) * m ** 2 / (m + jstar * np.pi / b * N / N0) ** 2
+    Pgm = (np.pi * E0 * b * jstar / 2) * m**2 / (m + jstar * np.pi / b * N / N0) ** 2
     # integrate
     Sgm = np.trapz(y=Pgm[iim], x=m[iim])
     return Sgm, Pgm

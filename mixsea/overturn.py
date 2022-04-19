@@ -88,7 +88,7 @@ def eps_overturn(
     depth : array-like
             Depth [m]
     t : array-like
-            Temperature [°C]. If using gsw equation of state, it should have ITS90 °C units. 
+            Temperature [°C]. If using gsw equation of state, it should have ITS90 °C units.
     SP : float or array-like
             Practical salinity [g/kg]. Can be a single constant value.
     lon : float, optional
@@ -248,9 +248,7 @@ def eps_overturn(
             q = dens
 
         if use_ip:  # Create intermediate density profile
-            q = intermediate_profile(
-                q, acc=dnoise, hinge=1000, kind="down"
-            )
+            q = intermediate_profile(q, acc=dnoise, hinge=1000, kind="down")
 
         # --->> THORPE SCALES <<---
         (
