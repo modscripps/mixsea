@@ -256,15 +256,15 @@ def adiabatic_leveling(
     g = gsw.grav(lat, Pbar)
     # The factor 1e-4 is needed for conversion from dbar to Pa.
     if order == 1:
-        N2 = -1e-4 * rhobar ** 2 * g ** 2 * p[0, :]
+        N2 = -1e-4 * rhobar**2 * g**2 * p[0, :]
     elif order == 2:
-        N2 = -1e-4 * rhobar ** 2 * g ** 2 * (p[1, :] + 2 * Pbar * p[0, :])
+        N2 = -1e-4 * rhobar**2 * g**2 * (p[1, :] + 2 * Pbar * p[0, :])
     elif order == 3:
         N2 = (
             -1e-4
-            * rhobar ** 2
-            * g ** 2
-            * (p[2, :] + 2 * Pbar * p[1, :] + 3 * Pbar ** 2 * p[0, :])
+            * rhobar**2
+            * g**2
+            * (p[2, :] + 2 * Pbar * p[1, :] + 3 * Pbar**2 * p[0, :])
         )
     else:
         raise ValueError("Fits are only included up to 3rd order.")

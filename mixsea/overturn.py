@@ -289,7 +289,7 @@ def eps_overturn(
             elif N2_method == "bulk":
                 g = gsw.grav(lat, p[pidx].mean())
                 densanom = dens[pidx] - dens_sorted[pidx]
-                densrms = np.sqrt(np.mean(densanom ** 2))
+                densrms = np.sqrt(np.mean(densanom**2))
                 N2o = g * densrms / (Lto * np.mean(dens[pidx]))
             elif N2_method == "endpt":
                 g = gsw.grav(lat, p[pidx].mean())
@@ -339,7 +339,7 @@ def eps_overturn(
     # Finally calculate epsilon for diagnostics, avoid nans, inf and negative N2.
     isgood = np.isfinite(diag["N2"]) & np.isfinite(diag["Lt"]) & ~diag["N2_flag"]
     diag["eps"][isgood] = (
-        alpha ** 2 * diag["Lt"][isgood] ** 2 * diag["N2"][isgood] ** 1.5
+        alpha**2 * diag["Lt"][isgood] ** 2 * diag["N2"][isgood] ** 1.5
     )
 
     # Use flags to get rid of bad overturns in basic output
