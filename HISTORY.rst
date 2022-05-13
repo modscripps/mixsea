@@ -2,7 +2,7 @@
 History
 =======
 
-v0.1.1 (unreleased)
+v0.x (unreleased)
 ---------------------
 
 Breaking changes
@@ -19,6 +19,31 @@ Bug fixes
 
 Documentation
 ~~~~~~~~~~~~~
+
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+
+v0.1.1 (2022-05-12)
+---------------------
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+
+New Features
+~~~~~~~~~~~~
+
+
+Bug fixes
+~~~~~~~~~
+- Fix an indexing bug in the shear/strain parameterization (:pull:`80`).
+  By `Henri Drake <https://github.com/hdrake>`_.
+
+
+Documentation
+~~~~~~~~~~~~~
+Lots of additions to the documentation.
 
 
 Internal Changes
