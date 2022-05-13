@@ -7,11 +7,16 @@ v0.1.2 (unreleased)
 
 Breaking changes
 ~~~~~~~~~~~~~~~~
-
-
+- In overturn.eps_overturn the argument overturns_from_CT was renamed to overturns_from_t (:pull:`97`). 
+    By `Jesse Cusack <https://github.com/jessecusack>`_.
+    
 New Features
 ~~~~~~~~~~~~
-
+- Linear equation of state option added to the overturn module (:pull:`97`) as well as a few other tweaks to the eps_overturn function, including:
+    - making latitude and longitude arguments optional
+    - providing an argument for the pressure bin width used in the potential density calculation
+    - removing unnecessary and/or meaningless diagnostics 
+  By `Jesse Cusack <https://github.com/jessecusack>`_.
 
 Bug fixes
 ~~~~~~~~~
@@ -19,11 +24,14 @@ Bug fixes
 
 Documentation
 ~~~~~~~~~~~~~
+- Explanation of the linear equation of state (:pull:`97`).
+  By `Jesse Cusack <https://github.com/jessecusack>`_.
 
 
 Internal Changes
 ~~~~~~~~~~~~~~~~
-
+- Many unit tests for the overturn module were added (:pull:`97`).
+  By `Jesse Cusack <https://github.com/jessecusack>`_.
 
 v0.1.1 (2022-05-12)
 ---------------------
@@ -46,7 +54,7 @@ Internal Changes
 ~~~~~~~~~~~~~~~~
 - Simplify overturn helper functions and unify variable names. (:pull:`93`).
   By `Jesse Cusack <https://github.com/jessecusack>`_.
-- Add Thorpe scale function with unit test (:pull:`79`). 
+- Add Thorpe scale function with unit test (:pull:`79`).
   By `Henri Drake <https://github.com/hdrake>`_ and `Jesse Cusack <https://github.com/jessecusack>`_.
 
 0.1.0 (2020-06-02)
