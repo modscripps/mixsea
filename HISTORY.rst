@@ -2,27 +2,28 @@
 History
 =======
 
-.. v0.x (unreleased)
-.. ---------------------
+v0.1.2 (unreleased)
+---------------------
 
-.. Breaking changes
-.. ~~~~~~~~~~~~~~~~
-
-
-.. New Features
-.. ~~~~~~~~~~~~
+Breaking changes
+~~~~~~~~~~~~~~~~
 
 
-.. Bug fixes
-.. ~~~~~~~~~
+New Features
+~~~~~~~~~~~~
 
 
-.. Documentation
-.. ~~~~~~~~~~~~~
+Bug fixes
+~~~~~~~~~
 
 
-.. Internal Changes
-.. ~~~~~~~~~~~~~~~~
+Documentation
+~~~~~~~~~~~~~
+
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+
 
 v0.1.1 (2022-05-12)
 ---------------------
