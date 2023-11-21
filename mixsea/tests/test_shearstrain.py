@@ -24,7 +24,11 @@ def test_nan_shearstrain(ctd_profile, ladcp_profile, smooth):
     m_include_sh = list(range(3))
     m_include_st = list(range(1, 10))
 
-    (eps_shst, krho_shst, diag,) = shearstrain.nan_shearstrain(
+    (
+        eps_shst,
+        krho_shst,
+        diag,
+    ) = shearstrain.nan_shearstrain(
         ctd_profile["depth"],
         ctd_profile["t"],
         ctd_profile["SP"],
@@ -76,7 +80,11 @@ def test_shearstrain(ctd_profile, ladcp_profile):
     m_include_sh = list(range(3))
     m_include_st = list(range(1, 10))
 
-    (eps_shst, krho_shst, diag,) = shearstrain.shearstrain(
+    (
+        eps_shst,
+        krho_shst,
+        diag,
+    ) = shearstrain.shearstrain(
         depth,
         t,
         SP,
