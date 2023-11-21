@@ -231,7 +231,6 @@ def eps_overturn(
 
     # Loop over pressure bins.
     for idx_bin in range(nbins):
-
         if EOS == "gsw":
             dens = gsw.pot_rho_t_exact(SA, t, p, p_ref=p_refs[idx_bin])
         elif EOS == "linear":
