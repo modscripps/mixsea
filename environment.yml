@@ -27,3 +27,5 @@ dependencies:
   - ipython
   - ipykernel
   - pip
+  - pip:
+    - "-e ."

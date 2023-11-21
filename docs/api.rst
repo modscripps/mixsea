@@ -16,6 +16,7 @@ Overturn-based parameterization
 
     overturn.eps_overturn
     overturn.nan_eps_overturn
+    overturn.thorpe_scale
 
 Shear/strain-based parameterization
 ===================================
