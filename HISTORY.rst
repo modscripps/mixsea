@@ -2,7 +2,26 @@
 History
 =======
 
-v0.1.2 (unreleased)
+.. v0.1.3 (unreleased)
+.. ---------------------
+
+.. Breaking changes
+.. ~~~~~~~~~~~~~~~~
+    
+.. New Features
+.. ~~~~~~~~~~~~
+
+.. Bug fixes
+.. ~~~~~~~~~
+
+.. Documentation
+.. ~~~~~~~~~~~~~
+
+.. Internal Changes
+.. ~~~~~~~~~~~~~~~~
+
+
+v0.1.2 (2023-11-21)
 ---------------------
 
 Breaking changes
@@ -20,7 +39,8 @@ New Features
 
 Bug fixes
 ~~~~~~~~~
-
+- Fix frequency shift bug in psd (:pull:`105`). 
+    By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 Documentation
 ~~~~~~~~~~~~~
@@ -32,6 +52,7 @@ Internal Changes
 ~~~~~~~~~~~~~~~~
 - Many unit tests for the overturn module were added (:pull:`97`).
   By `Jesse Cusack <https://github.com/jessecusack>`_.
+
 
 v0.1.1 (2022-05-12)
 ---------------------
@@ -56,6 +77,7 @@ Internal Changes
   By `Jesse Cusack <https://github.com/jessecusack>`_.
 - Add Thorpe scale function with unit test (:pull:`79`).
   By `Henri Drake <https://github.com/hdrake>`_ and `Jesse Cusack <https://github.com/jessecusack>`_.
+
 
 0.1.0 (2020-06-02)
 ------------------
