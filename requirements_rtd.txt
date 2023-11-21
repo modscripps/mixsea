@@ -1,0 +1,9 @@
+matplotlib
+pandoc
+sphinx
+sphinx_rtd_theme
+sphinxcontrib-bibtex<2.0.0
+nbsphinx
+pandoc
+argh
+-e .
