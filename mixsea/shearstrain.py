@@ -56,18 +56,19 @@ def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, window_size):
     -------
     list
         List with results in a dict for each depth segment. The dict has the following entries:
-        ``"segz"``
-            Segment depth vector (`array-like`).
-        ``"depth_bin"``
-            Segment center depth (`float`).
-        ``"N2"``
-            Segment buoyancy frequency squared (`array-like`).
-        ``"N2smooth"``
-            Segment polynomial fit to buoyancy frequency squared (`array-like`).
-        ``"N2mean"``
-            Segment mean buoyancy frequency squared (`float`).
-        ``"strain"``
-            Segment strain (`array-like`).
+
+        - ``"segz"``: Segment depth vector (`array-like`).
+
+        - ``"depth_bin"``: Segment center depth (`float`).
+
+        - ``"N2"``: Segment buoyancy frequency squared (`array-like`).
+
+        - ``"N2smooth"``: Segment polynomial fit to buoyancy frequency squared (`array-like`).
+
+        - ``"N2mean"``: Segment mean buoyancy frequency squared (`float`).
+
+        - ``"strain"``: Segment strain (`array-like`).
+
     """
     # Prepare output list. It will hold a dictionary with data for each window.
     out = []
@@ -125,18 +126,18 @@ def strain_adiabatic_leveling(
     -------
     list
         List with results in a dict for each depth segment. The dict has the following entries:
-        ``"segz"``
-            Segment depth vector (`array-like`).
-        ``"depth_bin"``
-            Segment center depth (`float`).
-        ``"N2"``
-            Segment buoyancy frequency squared (`array-like`).
-        ``"N2smooth"``
-            Segment polynomial fit to buoyancy frequency squared (`array-like`).
-        ``"N2mean"``
-            Segment mean buoyancy frequency squared (`float`).
-        ``"strain"``
-            Segment strain (`array-like`).
+
+        - ``"segz"``: Segment depth vector (`array-like`).
+
+        - ``"depth_bin"``: Segment center depth (`float`).
+
+        - ``"N2"``: Segment buoyancy frequency squared (`array-like`).
+
+        - ``"N2smooth"``: Segment polynomial fit to buoyancy frequency squared (`array-like`).
+        - ``"N2mean"``: Segment mean buoyancy frequency squared (`float`).
+
+        - ``"strain"``: Segment strain (`array-like`).
+
     """
     dz = np.absolute(np.median(np.diff(depth)))
     # Prepare output list. It will hold a dictionary with data for each window.
