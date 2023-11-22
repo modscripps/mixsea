@@ -62,8 +62,8 @@ napoleon_use_ivar = True
 nbsphinx_kernel_name = "python3"
 
 extlinks = {
-    "issue": ("https://github.com/modscripps/mixsea/issues/%s", "GH"),
-    "pull": ("https://github.com/modscripps/mixsea/pull/%s", "PR"),
+    "issue": ("https://github.com/modscripps/mixsea/issues/%s", "GH%s"),
+    "pull": ("https://github.com/modscripps/mixsea/pull/%s", "PR%s"),
 }
 
 ipython_savefig_dir = os.path.join(
