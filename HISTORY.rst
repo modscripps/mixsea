@@ -27,11 +27,12 @@ v0.1.2 (2023-11-21)
 Breaking changes
 ~~~~~~~~~~~~~~~~
 - In overturn.eps_overturn the argument overturns_from_CT was renamed to overturns_from_t (:pull:`97`). 
-    By `Jesse Cusack <https://github.com/jessecusack>`_.
+  By `Jesse Cusack <https://github.com/jessecusack>`_.
     
 New Features
 ~~~~~~~~~~~~
 - Linear equation of state option added to the overturn module (:pull:`97`) as well as a few other tweaks to the eps_overturn function, including:
+
     - making latitude and longitude arguments optional
     - providing an argument for the pressure bin width used in the potential density calculation
     - removing unnecessary and/or meaningless diagnostics 
@@ -40,7 +41,7 @@ New Features
 Bug fixes
 ~~~~~~~~~
 - Fix frequency shift bug in psd (:pull:`105`). 
-    By `Gunnar Voet <https://github.com/gunnarvoet>`_.
+  By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 Documentation
 ~~~~~~~~~~~~~
