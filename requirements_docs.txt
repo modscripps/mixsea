@@ -7,4 +7,5 @@ sphinxcontrib-bibtex
 nbsphinx
 pandoc
 argh
+black[jupyter]
 -e .
