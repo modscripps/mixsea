@@ -2,8 +2,8 @@
 History
 =======
 
-.. v0.1.3 (unreleased)
-.. ---------------------
+v0.1.3 (unreleased)
+---------------------
 
 .. Breaking changes
 .. ~~~~~~~~~~~~~~~~
@@ -14,8 +14,10 @@ History
 .. Bug fixes
 .. ~~~~~~~~~
 
-.. Documentation
-.. ~~~~~~~~~~~~~
+Documentation
+~~~~~~~~~~~~~
+- Fix an error in stairs plot in shearstrain notebook (:pull:`112`). 
+  :issue:`111` by `Ole Pinner <https://github.com/opinner>`_.
 
 .. Internal Changes
 .. ~~~~~~~~~~~~~~~~
