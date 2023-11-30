@@ -18,6 +18,8 @@ Documentation
 ~~~~~~~~~~~~~
 - Fix an error in stairs plot in shearstrain notebook (:pull:`112`). 
   :issue:`111` by `Ole Pinner <https://github.com/opinner>`_.
+- Run `black` formatting on all jupyter notebooks (:pull:`113`). 
+  By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 .. Internal Changes
 .. ~~~~~~~~~~~~~~~~
