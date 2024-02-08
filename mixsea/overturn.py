@@ -358,9 +358,7 @@ def eps_overturn(
 
     # Finally calculate epsilon for diagnostics, avoid nans, inf and negative N2.
     isgood = np.isfinite(diag["N2"]) & np.isfinite(diag["Lt"]) & ~diag["N2_flag"]
-    diag["eps"][isgood] = (
-        alpha**2 * diag["Lt"][isgood] ** 2 * diag["N2"][isgood] ** 1.5
-    )
+    diag["eps"][isgood] = alpha**2 * diag["Lt"][isgood] ** 2 * diag["N2"][isgood] ** 1.5
 
     # Use flags to get rid of bad overturns in basic output
     isbad = diag["noise_flag"] | diag["N2_flag"] | diag["Ro_flag"]

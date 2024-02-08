@@ -6,6 +6,9 @@ mixsea
 .. image:: https://img.shields.io/pypi/v/mixsea.svg
         :target: https://pypi.python.org/pypi/mixsea
 
+.. image:: https://zenodo.org/badge/258860474.svg
+        :target: https://zenodo.org/doi/10.5281/zenodo.10636076
+
 .. image:: https://github.com/modscripps/mixsea/actions/workflows/mixsea-pytest.yml/badge.svg
         :target: https://github.com/modscripps/mixsea/actions/workflows/mixsea-pytest.yml
 

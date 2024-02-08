@@ -422,9 +422,7 @@ def gm_shear_variance(m, iim, N):
     jstar = 3
     E0 = 6.3e-5  # GM76 energy level
     Pgm = (
-        (3 * np.pi * E0 * b * jstar / 2)
-        * m**2
-        / (m + jstar * np.pi / b * N / N0) ** 2
+        (3 * np.pi * E0 * b * jstar / 2) * m**2 / (m + jstar * np.pi / b * N / N0) ** 2
     )
     # integrate
     Sgm = np.trapz(y=Pgm[iim], x=m[iim])
