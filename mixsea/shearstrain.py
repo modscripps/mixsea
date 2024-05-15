@@ -763,8 +763,10 @@ def shearstrain(
     Rwcor = np.full(nz, np.nan)
     Nmseg = np.full(nz, np.nan)
     krho_shst = np.full(nz, np.nan)
+    krho_sh = np.full(nz, np.nan)
     krho_st = np.full(nz, np.nan)
     eps_shst = np.full(nz, np.nan)
+    eps_sh = np.full(nz, np.nan)
     eps_st = np.full(nz, np.nan)
     Int_st = np.full(nz, np.nan)
     Int_sh = np.full(nz, np.nan)
@@ -863,6 +865,10 @@ def shearstrain(
             eps_shst[iwin] = eps_shearstrain(eps0, Nm, N0, Ssh, Sshgm, Rw, f)
             krho_shst[iwin] = diffusivity(eps_shst[iwin], Nm, Gam=Gam0)
 
+            # Shear-only parameterization (constant Rw)
+            eps_sh[iwin] = eps_shearstrain(eps0, Nm, N0, Ssh, Sshgm, 3, f)
+            krho_sh[iwin] = diffusivity(eps_sh[iwin], Nm, Gam=Gam0)
+
         # Strain only parameterization
         # Use assumed shear/strain ratio of 3
         Rw = 3
@@ -872,7 +878,9 @@ def shearstrain(
     if return_diagnostics:
         diag = dict(
             eps_st=eps_st,
+            eps_sh=eps_sh,
             krho_st=krho_st,
+            krho_sh=krho_sh,
             P_shear=P_shear,
             P_strain=P_strain,
             Mmax_sh=Mmax_sh,
