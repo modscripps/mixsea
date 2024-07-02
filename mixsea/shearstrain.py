@@ -1,6 +1,7 @@
 import gsw
 import numpy as np
-from scipy.integrate import cumtrapz
+import scipy
+from packaging.version import Version
 from scipy.interpolate import interp1d
 
 from . import helpers, nsq
@@ -203,7 +204,11 @@ def find_cutoff_wavenumber(P, m, integration_limit, lambda_min=5):
     iim : array-like
         Integration range as indexer to `P`.
     """
-    specsum = cumtrapz(P, m)
+    # cumtrapz changed to cumulative_trapezoid in scip 1.6.0
+    if Version(scipy.__version__) >= Version("1.6.0"):
+        specsum = scipy.integrate.cumulative_trapezoid(P, m)
+    else:
+        specsum = scipy.integrate.cumtrapz(P, m)
     specsum = np.insert(specsum, 0, 0)
     iim = np.flatnonzero(
         np.less(specsum, integration_limit, where=np.isfinite(specsum))
