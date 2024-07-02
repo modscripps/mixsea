@@ -8,8 +8,10 @@ v0.1.3 (unreleased)
 .. Breaking changes
 .. ~~~~~~~~~~~~~~~~
     
-.. New Features
-.. ~~~~~~~~~~~~
+New Features
+~~~~~~~~~~~~
+- Add shear-only solution to `diag` output in finescale parameterization (:pull:`119`).
+  By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 .. Bug fixes
 .. ~~~~~~~~~
