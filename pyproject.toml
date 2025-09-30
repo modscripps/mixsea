@@ -11,7 +11,7 @@ dependencies = [
     "numpy>=2",
     "scipy>=1.6.0",
     "gsw>=3.6",
-    ]
+]
 classifiers=[
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -33,7 +33,20 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "ipykernel>=6.30.1",
+    "ipython>=8.18.1",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.9.4",
+    "nbsphinx>=0.9.7",
+    "notebook>=7.4.7",
+    "pandoc>=2.4",
+    "pre-commit>=4.3.0",
     "pytest>=8.4.2",
+    "ruff>=0.13.2",
+    "sphinx>=7.4.7",
+    "sphinx-rtd-theme>=3.0.2",
+    "sphinxcontrib-bibtex>=2.6.5",
+    "watchdog>=6.0.0",
 ]
 
 [tool.pytest.ini_options]
@@ -53,3 +66,6 @@ norecursedirs = [
     "__pycache__"
 ]
 xfail_strict = true
+
+[tool.ruff]
+exclude = [".venv"]

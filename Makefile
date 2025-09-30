@@ -41,35 +41,23 @@ clean-pyc: ## remove Python file artifacts
 	find . -name '*~' -exec rm -f {} +
 	find . -name '__pycache__' -exec rm -fr {} +
 
-clean-test: ## remove test and coverage artifacts
-	rm -fr .tox/
-	rm -f .coverage
-	rm -fr htmlcov/
+clean-test: ## remove test artifacts
 	rm -fr .pytest_cache
 
-style: ## style code using isort & black, then check style using flake8
-	isort mixsea/*.py
-	isort mixsea/tests/*.py
-	black mixsea
-	flake8 mixsea 
+format: ## style code using isort & black, then check style using flake8
+	uv run ruff format src/mixsea/
+	uv run ruff format tests/
 
-style-check: ## check code style using isort & black, then check style using flake8
-	isort -c mixsea/*.py
-	isort -c mixsea/tests/*.py
-	black --check mixsea
-	flake8 mixsea 
+format-check: ## check code style using isort & black, then check style using flake8
+	uv run ruff format --diff src/mixsea/
+	uv run ruff format --diff tests/
+
+check:
+	uv run ruff check src/mixsea/
+	uv run ruff check tests/
 
 test: ## run tests quickly with the default Python
-	pytest
-
-test-all: ## run tests on every Python version with tox
-	tox
-
-coverage: ## check code coverage quickly with the default Python
-	coverage run --source mixsea -m pytest
-	coverage report -m
-	coverage html
-	$(BROWSER) htmlcov/index.html
+	uv run pytest
 
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -rf docs/generated/
