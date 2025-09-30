@@ -1,0 +1,55 @@
+[project]
+name = "mixsea"
+version = "0.1.2"
+description = "ocean mixing parameterizations"
+readme = "README.rst"
+authors = [ { name = "mixsea developers", email = "" }, ]
+license = "MIT"
+license-files = ["LICENSE", ]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=2",
+    "scipy>=1.6.0",
+    "gsw>=3.6",
+    ]
+classifiers=[
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    ]
+
+[project.urls]
+"Homepage" = "https://github.com/modscripps/mixsea"
+"Documentation" = "https://mixsea.readthedocs.io"
+"Changelog" = "https://github.com/modscripps/mixsea/blob/main/HISTORY.rst"
+"Bug Tracker" = "https://github.com/modscripps/mixsea/issues"
+
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "--strict-markers", # Warn about undeclared markers
+    "--import-mode=importlib", # Recommended for modern projects
+]
+testpaths = [
+    "tests", # Directory where your tests are located
+]
+norecursedirs = [
+    ".git",
+    ".venv",
+    "dist",
+    "build",
+    "__pycache__"
+]
+xfail_strict = true

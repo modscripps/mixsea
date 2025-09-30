@@ -217,7 +217,7 @@ def adiabatic_leveling(
         icapr = i1[-1]
     else:
         raise ValueError(
-            "The argument cap must be either None, 'both', 'left'" " or 'right'"
+            "The argument cap must be either None, 'both', 'left' or 'right'"
         )
 
     if cap is not None:

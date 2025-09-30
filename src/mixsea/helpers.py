@@ -249,13 +249,13 @@ def read_testfile(filename):
 
 def read_ctd_testfile():
     p = pathlib.Path(__file__).resolve()
-    ctdfile = p.parent / "tests" / "data" / "ctd_test_data.csv"
+    ctdfile = p.parent.parent.parent / "tests" / "data" / "ctd_test_data.csv"
     ctd = read_testfile(ctdfile)
     return ctd
 
 
 def read_ladcp_testfile():
     p = pathlib.Path(__file__).resolve()
-    ladcpfile = p.parent / "tests" / "data" / "ladcp_test_data.csv"
+    ladcpfile = p.parent.parent.parent / "tests" / "data" / "ladcp_test_data.csv"
     ladcp = read_testfile(ladcpfile)
     return ladcp
