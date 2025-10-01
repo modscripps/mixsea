@@ -21,8 +21,9 @@ jobs:
 
     # 1. Install UV and set up Python
     - name: Set up UV and Python ${{ matrix.python-version }}
-      uses: astral-sh/setup-uv@v1
+      uses: astral-sh/setup-uv@v6
       with:
+        version: "latest"
         python-version: ${{ matrix.python-version }}
         enable-cache: true
 
