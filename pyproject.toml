@@ -1,6 +1,6 @@
 [project]
 name = "mixsea"
-version = "0.1.2"
+version = "0.2.0"
 description = "ocean mixing parameterizations"
 readme = "README.rst"
 authors = [ { name = "mixsea developers", email = "" }, ]

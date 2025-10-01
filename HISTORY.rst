@@ -20,7 +20,7 @@ History
 .. Internal Changes
 .. ~~~~~~~~~~~~~~~~
 
-v0.2.0 (unreleased)
+v0.2.0 (2025-09-30)
 ---------------------
 
 Breaking changes

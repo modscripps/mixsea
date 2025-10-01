@@ -43,7 +43,7 @@ Copied and adjusted from xarray.
     uv pip install ./dist/*.whl
     # or install the source distribution (.tar.gz) for a full test
     # Run a simple check or run your test suite against the installed package
-    uv run python -c "import mixsea"
+    python -c "import mixsea"
     ```
 10. Use uv to register and upload the release on test.pypi.org:
      ```
