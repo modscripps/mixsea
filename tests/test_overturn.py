@@ -52,7 +52,7 @@ def test_eps_overturn():
     p = overturn.gsw.p_from_z(-depth, lat)
     SA = overturn.gsw.SA_from_SP(SP, p, lon, lat)
     CT = overturn.gsw.CT_from_t(SA, t, p)
-    dens = overturn.gsw.pot_rho_t_exact(SA, t, p, 500.0)
+    _dens = overturn.gsw.pot_rho_t_exact(SA, t, p, 500.0)
     N2p, _ = overturn.gsw.Nsquared(SA, CT, p, lat)  # Almost constant...
 
     SAo = overturn.gsw.SA_from_SP(SPo, p, lon, lat)

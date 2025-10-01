@@ -21,11 +21,7 @@ Copied and adjusted from xarray.
      pytest
      ```
 4. Check that the ReadTheDocs build is passing.
-5. Bump the version by running
-     ```
-     bump2version patch # possible: major / minor / patch
-     ```
-     This will change the version number in `setup.py`, `setup.cfg` and `mixsea/__init.py__`.
+5. Bump the version by editing pyproject.toml.
 6. On the main branch, commit the release in git:
      ```
      git commit -am 'Release v0.X.Y'
@@ -38,23 +34,39 @@ Copied and adjusted from xarray.
      ```
      make clean
      git clean -xdf  # this deletes all uncommited changes!
-     python setup.py bdist_wheel sdist
+     uv build
      ```
-9. Use twine to check the package build:
+9. Test your build by creating an isolated environment and installing there:
+    ```
+    uv venv .test_env
+    source .test_env/bin/activate
+    uv pip install ./dist/*.whl
+    # or install the source distribution (.tar.gz) for a full test
+    # Run a simple check or run your test suite against the installed package
+    uv run python -c "import mixsea"
+    ```
+10. Use uv to register and upload the release on test.pypi.org:
      ```
-     twine check dist/mixsea-0.X.Y*
-     ```
-10. Use twine to register and upload the release on test.pypi.org:
-     ```
-     twine upload --repository-url https://test.pypi.org/legacy/ dist/mixsea-0.X.Y*
+     # Replace YOUR_TESTPYPI_TOKEN with the actual token you generated
+     uv publish \
+        --publish-url https://test.pypi.org/legacy/ \
+        --token YOUR_TESTPYPI_TOKEN
      ```
     You will need to be listed as a package owner at
-    https://test.pypi.python.org/pypi/mixsea for this to work. 
+    https://test.pypi.python.org/pypi/mixsea for this to work.
 
-11. Use twine to register and upload the release on pypi. Be careful, you can't
+    Alternatively, the url for test.pypi.org is also listed in `pyproject.toml`
+    and can be used as:
+    ```
+    uv publish --index testpypi --username <username> --password <password>
+    ```
+    In this case we used username/password to identify, this is interchangeable
+    with the token method.
+
+11. Use uv to register and upload the release on pypi. Be careful, you can't
     take this back!
      ```
-     twine upload dist/mixsea-0.X.Y*
+     uv publish
      ```
     You will need to be listed as a package owner at
     https://pypi.python.org/pypi/mixsea for this to work.
@@ -70,8 +82,8 @@ Copied and adjusted from xarray.
      git push upstream stable
      git checkout main
      ```
-    It's OK to force push to 'stable' if necessary. (We also update the stable 
-    branch with `git cherrypick` for documentation only fixes that apply the 
+    It's OK to force push to 'stable' if necessary. (We also update the stable
+    branch with `git cherrypick` for documentation only fixes that apply the
     current released version.)
 14. Add a section for the next release (v.X.Y+1) to HISTORY.rst:
      ```

@@ -5,8 +5,8 @@ Credits
 Development Lead
 ----------------
 
-* Jesse Cusack <jmcusack@ucsd.edu>
-* Gunnar Voet <gvoet@ucsd.edu>
+* Jesse Cusack <https://github.com/jessecusack>
+* Gunnar Voet <https://github.com/gunnarvoet>
 
 Contributors
 ------------

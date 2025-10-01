@@ -1,0 +1,77 @@
+[project]
+name = "mixsea"
+version = "0.1.2"
+description = "ocean mixing parameterizations"
+readme = "README.rst"
+authors = [ { name = "mixsea developers", email = "" }, ]
+license = "MIT"
+license-files = ["LICENSE", ]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=2",
+    "scipy>=1.6.0",
+    "gsw>=3.6",
+]
+classifiers=[
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    ]
+
+[project.urls]
+"Homepage" = "https://github.com/modscripps/mixsea"
+"Documentation" = "https://mixsea.readthedocs.io"
+"Changelog" = "https://github.com/modscripps/mixsea/blob/main/HISTORY.rst"
+"Bug Tracker" = "https://github.com/modscripps/mixsea/issues"
+
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.30.1",
+    "ipython>=8.18.1",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.9.4",
+    "nbsphinx>=0.9.7",
+    "notebook>=7.4.7",
+    "pandoc>=2.4",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "ruff>=0.13.2",
+    "sphinx>=7.4.7",
+    "sphinx-rtd-theme>=3.0.2",
+    "sphinxcontrib-bibtex>=2.6.5",
+    "watchdog>=6.0.0",
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "--strict-markers", # Warn about undeclared markers
+    "--import-mode=importlib", # Recommended for modern projects
+]
+testpaths = [
+    "tests", # Directory where your tests are located
+]
+norecursedirs = [
+    ".git",
+    ".venv",
+    "dist",
+    "build",
+    "__pycache__"
+]
+xfail_strict = true
+
+[tool.ruff]
+exclude = [".venv"]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true

@@ -2,29 +2,68 @@
 History
 =======
 
-v0.1.3 (unreleased)
----------------------
+.. vx.x.x (unreleased)
+.. ---------------------
 
 .. Breaking changes
 .. ~~~~~~~~~~~~~~~~
-    
+
+.. New Features
+.. ~~~~~~~~~~~~
+
+.. Bug fixes
+.. ~~~~~~~~~
+
+.. Documentation
+.. ~~~~~~~~~~~~~
+
+.. Internal Changes
+.. ~~~~~~~~~~~~~~~~
+
+v0.2.0 (unreleased)
+---------------------
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+- Require the following minimum versions (:pull:`121`):
+    - python>=3.9
+    - numpy>=2
+    - scipy>=1.6
+    - gsw>=3.6
+
 New Features
 ~~~~~~~~~~~~
 - Add shear-only solution to `diag` output in finescale parameterization (:pull:`119`).
   By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
-.. Bug fixes
-.. ~~~~~~~~~
+Bug fixes
+~~~~~~~~~
+- The numpy trapz() function is now trapezoid() (starting at numpy v2.0.0) (:pull:`121`).
 
 Documentation
 ~~~~~~~~~~~~~
-- Fix an error in stairs plot in shearstrain notebook (:pull:`112`). 
+- Fix an error in stairs plot in shearstrain notebook (:pull:`112`).
   :issue:`111` by `Ole Pinner <https://github.com/opinner>`_.
-- Run `black` formatting on all jupyter notebooks (:pull:`113`). 
+- Run `black` formatting on all jupyter notebooks (:pull:`113`).
   By `Gunnar Voet <https://github.com/gunnarvoet>`_.
+- Add zenodo doi to readme (:pull:`115`).
+- Fix broken doi links (:pull:`117`).
+- Update guide to contributing to reflect internal changes (e.g. changing to uv) (:pull:`121`).
+- Update release guide with uv specifics (:pull:`121`).
 
-.. Internal Changes
-.. ~~~~~~~~~~~~~~~~
+Internal Changes
+~~~~~~~~~~~~~~~~
+- Modernize a number of internals (:pull:`121`):
+    - Switch over to use `pyproject.toml` for python project definition and metadata.
+    - Use `uv <https://docs.astral.sh/uv/>`_ as build backend.
+    - Move code to `src/mixsea/`.
+    - Move tests to root directory.
+    - Remove pre-commit hooks for isort and black and add pre-commit hooks for `ruff <https://docs.astral.sh/ruff/>`_-check and ruff-format.
+    - Remove test file with just a few examples (`tests/test_really_cool_feature.py`).
+    - Update Github Workflow to work with uv and ruff.
+    - Update Makefile to work with uv.
+    - Remove `requirements.txt` and `requirements_docs.txt` as dependencies are now declared in `pyproject.toml`.
+    - Remove `environment.yml` files as dependencies are now declared in `pyproject.toml`.
 
 
 v0.1.2 (2023-11-21)
@@ -32,21 +71,21 @@ v0.1.2 (2023-11-21)
 
 Breaking changes
 ~~~~~~~~~~~~~~~~
-- In overturn.eps_overturn the argument overturns_from_CT was renamed to overturns_from_t (:pull:`97`). 
+- In overturn.eps_overturn the argument overturns_from_CT was renamed to overturns_from_t (:pull:`97`).
   By `Jesse Cusack <https://github.com/jessecusack>`_.
-    
+
 New Features
 ~~~~~~~~~~~~
 - Linear equation of state option added to the overturn module (:pull:`97`) as well as a few other tweaks to the eps_overturn function, including:
 
     - making latitude and longitude arguments optional
     - providing an argument for the pressure bin width used in the potential density calculation
-    - removing unnecessary and/or meaningless diagnostics 
+    - removing unnecessary and/or meaningless diagnostics
   By `Jesse Cusack <https://github.com/jessecusack>`_.
 
 Bug fixes
 ~~~~~~~~~
-- Fix frequency shift bug in psd (:pull:`105`). 
+- Fix frequency shift bug in psd (:pull:`105`).
   By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 Documentation
