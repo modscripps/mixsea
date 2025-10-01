@@ -11,13 +11,13 @@ build:
   tools:
     python: "3.13"
 
-# The 'build.jobs' section is for custom build steps
-jobs:
-  pre_build:
-    # Change the current working directory to the repository root before running the build command
-    # RTD normally runs the build from the directory containing conf.py
-    # This forces the working directory to be the repo root for the whole process.
-    - cd $READTHEDOCS_REPOSITORY_PATH
+  # The 'build.jobs' section is for custom build steps
+  jobs:
+    pre_build:
+      # Change the current working directory to the repository root before running the build command
+      # RTD normally runs the build from the directory containing conf.py
+      # This forces the working directory to be the repo root for the whole process.
+      - cd $READTHEDOCS_REPOSITORY_PATH
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
