@@ -25,7 +25,7 @@ v0.2.0 (unreleased)
 
 Breaking changes
 ~~~~~~~~~~~~~~~~
-- Require the following minimum versions:
+- Require the following minimum versions (:pull:`121`):
     - python>=3.9
     - numpy>=2
     - scipy>=1.6
@@ -38,7 +38,7 @@ New Features
 
 Bug fixes
 ~~~~~~~~~
-- The numpy trapz() function is now trapezoid() (starting at numpy v2.0.0).
+- The numpy trapz() function is now trapezoid() (starting at numpy v2.0.0) (:pull:`121`).
 
 Documentation
 ~~~~~~~~~~~~~
@@ -48,12 +48,12 @@ Documentation
   By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 - Add zenodo doi to readme (:pull:`115`).
 - Fix broken doi links (:pull:`117`).
-- Update guide to contributing to reflect internal changes (e.g. changing to uv).
-- Update release guide with uv specifics.
+- Update guide to contributing to reflect internal changes (e.g. changing to uv) (:pull:`121`).
+- Update release guide with uv specifics (:pull:`121`).
 
 Internal Changes
 ~~~~~~~~~~~~~~~~
-- Modernize a number of internals:
+- Modernize a number of internals (:pull:`121`):
     - Switch over to use `pyproject.toml` for python project definition and metadata.
     - Use `uv <https://docs.astral.sh/uv/>`_ as build backend.
     - Move code to `src/mixsea/`.
