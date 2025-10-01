@@ -10,10 +10,10 @@ Contributing
 .. note::
 
   This document is based on ideas and guidelines from the
-  `xarray Contributing Guide 
+  `xarray Contributing Guide
   <http://xarray.pydata.org/en/stable/contributing.html>`_,
   which in turn builds largely upon the
-  `Pandas Contributing Guide 
+  `Pandas Contributing Guide
   <http://pandas.pydata.org/pandas-docs/stable/contributing.html>`_ .
   Some of the guidelines are more aspirational than practical at this point and constitute an attempt to learn how to build a proper open source software repository.
 
@@ -27,7 +27,7 @@ If you are brand new to *mixsea* or open-source development, we recommend going
 through the `GitHub "issues" tab <https://github.com/modscripps/mixsea/issues>`_
 to find issues that interest you.
 There are a number of issues listed under
-`Documentation <https://github.com/modscripps/mixsea/issues?q=is%3Aissue+is%3Aopen+label%3Adocumentation>`_ and 
+`Documentation <https://github.com/modscripps/mixsea/issues?q=is%3Aissue+is%3Aopen+label%3Adocumentation>`_ and
 `good first issue <https://github.com/modscripps/mixsea/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22>`_
 where you could start out. Once you've found an interesting issue, you can return
 here to get your development environment setup.
@@ -59,7 +59,7 @@ Bug reports must:
       ...
       ```
 
-.. 
+..
   #. Include the full version string of *mixsea* and its dependencies. You can use the built in function::
 
       >>> import mixsea as ctd
@@ -85,8 +85,8 @@ Version control, Git, and GitHub
 
 To the new user, working with Git is one of the more daunting aspects of contributing
 to *mixsea*.  It can very quickly become overwhelming, but sticking to the guidelines
-below will help keep the process straightforward and mostly trouble free.  As always,
-if you are having difficulties please feel free to ask for help.
+below will help keep the process straightforward and mostly trouble free.
+If you are having difficulties please feel free to ask for help.
 
 The code is hosted on `GitHub <https://www.github.com/modscripps/mixsea>`_. To contribute you will need to sign up for a `free GitHub account
 <https://github.com/signup/free>`_. We use `Git <http://git-scm.com/>`_ for
@@ -96,7 +96,7 @@ Some great resources for learning Git:
 
 * the `GitHub help pages <http://help.github.com/>`_.
 * the `NumPy's documentation <http://docs.scipy.org/doc/numpy/dev/index.html>`_.
-* Matthew Brett's `Pydagogue <http://matthew-brett.github.com/pydagogue/>`_.
+* the `Git Book <https://git-scm.com/learn.html>`_.
 
 Getting started with Git
 ------------------------
@@ -114,7 +114,7 @@ You will need your own fork to work on the code. Go to the `mixsea project
 page <https://github.com/modscripps/mixsea>`_ and hit the ``Fork`` button. You will
 want to clone your fork to your machine::
 
-    git clone https://github.com/your-user-name/mixsea.git
+    git clone https://github.com/<your-user-name>/mixsea.git
     cd mixsea
     git remote add upstream https://github.com/modscripps/mixsea.git
 
@@ -137,50 +137,17 @@ Creating a Python Environment
 Before starting any development, you'll need to create an isolated mixsea
 development environment:
 
-- Install either `Anaconda <https://www.anaconda.com/download/>`_ or `miniconda
-  <https://conda.io/miniconda.html>`_
-- Make sure your conda is up to date (``conda update conda``)
+- Install `uv <https://docs.astral.sh/uv/getting-started/installation/>`_.
 - Make sure that you have :ref:`cloned the repository <contributing.forking>`
 - ``cd`` to the *mixsea* source directory
+- Run python in a local environment while installing all necessary packages listed in `pyproject.toml` and import `mixsea`::
 
-We'll now kick off a two-step process:
-
-1. Install the build dependencies
-2. Build and install mixsea
-
-.. code-block:: none
-
-   # Create and activate the build environment
-   # This is for Linux and MacOS. On Windows, use py37-windows.yml instead.
-   conda env create -f environment.yml
-
-   conda activate mixsea
-
-   # or with older versions of Anaconda:
-   source activate mixsea
-
-   # Build and install mixsea
-   pip install -e .
-
-At this point you should be able to import *mixsea* from your locally built version::
-
-   $ python  # start an interpreter
+   uv run python
    >>> import mixsea
    >>> mixsea.__version__
-   '0.1.0'
+   '0.2.0'
 
-This will create the new environment, and not touch any of your existing environments,
-nor any existing Python installation.
-
-To view your environments::
-
-      conda info -e
-
-To return to your root environment::
-
-      conda deactivate
-
-See the full conda docs `here <http://conda.pydata.org/docs>`__.
+See the full uv docs `here <https://docs.astral.sh/uv/>`__.
 
 Creating a branch
 -----------------
@@ -261,7 +228,7 @@ Some other important things to know about the docs:
   doc build. This approach means that code examples will always be up to date,
   but it does make the doc building a bit more complex
 
-- The documentation includes jupyer notebooks via the `nbsphinx <https://nbsphinx.readthedocs.io>`__ exension. Make sure to clean all notebook output before adding and committing changes, this removes any images and other output and makes diffs much more easy to read.
+- The documentation includes jupyer notebooks via the `nbsphinx <https://nbsphinx.readthedocs.io>`__ exension. Make sure to clean all notebook output before adding and committing changes, this removes any images and other output and makes diffs much easier to read.
 
 - Our API documentation in ``doc/api.rst`` houses the auto-generated documentation from the docstrings. Every method should be included in ``api.rst``, else Sphinx will emit a warning.
 
@@ -311,33 +278,17 @@ as possible to avoid mass breakages.
 Code Formatting
 ~~~~~~~~~~~~~~~
 
-mixsea uses several tools to ensure a consistent code format throughout the project:
+mixsea uses `ruff <https://docs.astral.sh/ruff/>`_ to ensure a consistent code format throughout the project.
+From the root of the `mixsea` repository run::
 
-- `Black <https://black.readthedocs.io/en/stable/>`_ for standardized code formatting
-- `Flake8 <http://flake8.pycqa.org/en/latest/>`_ for general code quality
-- `isort <https://github.com/timothycrosley/isort>`_ for standardized order in imports.
-  See also `flake8-isort <https://github.com/gforcada/flake8-isort>`_.
+   make format
+   make check
 
-``pip``::
-
-   pip install black flake8 isort mypy
-
-and then run from the root of the `mixsea` repository::
-
-   isort -rc .
-   black -t py36 .
-   flake8
-
-to auto-format your code. Additionally, many editors have plugins that will
-apply ``black`` as you edit files.
+for automatic code formatting and consistency checks.
 
 Optionally, you may wish to setup `pre-commit hooks <https://pre-commit.com/>`_
 to automatically run all the above tools every time you make a git commit. This
-can be done by installing ``pre-commit``::
-
-   pip install pre-commit
-
-and then running::
+can be done by using ``pre-commit``::
 
    pre-commit install
 
@@ -351,7 +302,7 @@ Testing With Continuous Integration
 -----------------------------------
 
 The *mixsea* test suite runs automatically the
-`Travis CI <https://travis-ci.com/github/modscripps/mixsea>`__,
+`GitHub Actions <https://github.com/modscripps/mixsea/actions>`__,
 continuous integration service, once your pull request is submitted.
 
 A pull-request will be considered for merging when you have an all 'green' build. If any tests are failing, then you will get a red 'X', where you can click through to see the individual failed tests.
@@ -386,7 +337,7 @@ extensions in `numpy.testing
 Writing tests
 ~~~~~~~~~~~~~
 
-All tests should go into the ``tests`` subdirectory of the specific package.
+All tests should go into the ``tests`` directory.
 This folder contains current examples of tests, and we suggest looking to these for
 inspiration.
 
@@ -403,7 +354,7 @@ features that we like to use.
 
 
 We would name this file ``test_really_cool_feature.py`` and put in an appropriate place in the
-``mixsea/tests/`` structure.
+``tests/`` structure.
 
 .. code-block:: python
 
@@ -489,18 +440,18 @@ Running the test suite
 
 The tests can then be run directly inside your Git clone by typing::
 
-    pytest mixsea
+    uv run pytest mixsea
 
 Often it is worth running only a subset of tests first around your changes before running the
 entire suite. The easiest way to do this is with::
 
-    pytest mixsea/path/to/test.py -k regex_matching_test_name
+    uv run pytest mixsea/path/to/test.py -k regex_matching_test_name
 
 Or with one of the following constructs::
 
-    pytest mixsea/tests/[test-module].py
-    pytest mixsea/tests/[test-module].py::[TestClass]
-    pytest mixsea/tests/[test-module].py::[TestClass]::[test_method]
+    uv run pytest mixsea/tests/[test-module].py
+    uv run pytest mixsea/tests/[test-module].py::[TestClass]
+    uv run pytest mixsea/tests/[test-module].py::[TestClass]::[test_method]
 
 .. _documenting.your.code:
 
@@ -662,4 +613,3 @@ PR checklist
 
 - **Push your code and** `create a PR on GitHub <https://help.github.com/en/articles/creating-a-pull-request>`_.
 - **Use a helpful title for your pull request** by summarizing the main contributions rather than using the latest commit message. If this addresses an `issue <https://github.com/modscripps/mixsea/issues>`_, please `reference it <https://help.github.com/en/articles/autolinked-references-and-urls>`_.
-
