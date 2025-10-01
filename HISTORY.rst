@@ -36,8 +36,9 @@ New Features
 - Add shear-only solution to `diag` output in finescale parameterization (:pull:`119`).
   By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
-.. Bug fixes
-.. ~~~~~~~~~
+Bug fixes
+~~~~~~~~~
+- The numpy trapz() function is now trapezoid() (starting at numpy v2.0.0).
 
 Documentation
 ~~~~~~~~~~~~~
@@ -47,6 +48,8 @@ Documentation
   By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 - Add zenodo doi to readme (:pull:`115`).
 - Fix broken doi links (:pull:`117`).
+- Update guide to contributing to reflect internal changes (e.g. changing to uv).
+- Update release guide with uv specifics.
 
 Internal Changes
 ~~~~~~~~~~~~~~~~
@@ -60,6 +63,8 @@ Internal Changes
     - Update Github Workflow to work with uv and ruff.
     - Update Makefile to work with uv.
     - Remove `requirements.txt` and `requirements_docs.txt` as dependencies are now declared in `pyproject.toml`.
+    - Remove `environment.yml` files as dependencies are now declared in `pyproject.toml`.
+
 
 v0.1.2 (2023-11-21)
 ---------------------
