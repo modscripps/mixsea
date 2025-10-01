@@ -69,3 +69,9 @@ xfail_strict = true
 
 [tool.ruff]
 exclude = [".venv"]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
