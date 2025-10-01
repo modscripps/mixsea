@@ -1,7 +1,6 @@
 import gsw
 import numpy as np
 import scipy
-from packaging.version import Version
 from scipy.interpolate import interp1d
 
 from . import helpers, nsq
@@ -204,11 +203,7 @@ def find_cutoff_wavenumber(P, m, integration_limit, lambda_min=5):
     iim : array-like
         Integration range as indexer to `P`.
     """
-    # cumtrapz changed to cumulative_trapezoid in scip 1.6.0
-    if Version(scipy.__version__) >= Version("1.6.0"):
-        specsum = scipy.integrate.cumulative_trapezoid(P, m)
-    else:
-        specsum = scipy.integrate.cumtrapz(P, m)
+    specsum = scipy.integrate.cumulative_trapezoid(P, m)
     specsum = np.insert(specsum, 0, 0)
     iim = np.flatnonzero(
         np.less(specsum, integration_limit, where=np.isfinite(specsum))
@@ -430,7 +425,7 @@ def gm_shear_variance(m, iim, N):
         (3 * np.pi * E0 * b * jstar / 2) * m**2 / (m + jstar * np.pi / b * N / N0) ** 2
     )
     # integrate
-    Sgm = np.trapz(y=Pgm[iim], x=m[iim])
+    Sgm = np.trapezoid(y=Pgm[iim], x=m[iim])
     return Sgm, Pgm
 
 
@@ -485,7 +480,7 @@ def gm_strain_variance(m, iim, N):
     E0 = 6.3e-5  # GM energy level
     Pgm = (np.pi * E0 * b * jstar / 2) * m**2 / (m + jstar * np.pi / b * N / N0) ** 2
     # integrate
-    Sgm = np.trapz(y=Pgm[iim], x=m[iim])
+    Sgm = np.trapezoid(y=Pgm[iim], x=m[iim])
     return Sgm, Pgm
 
 
@@ -844,14 +839,14 @@ def shearstrain(
 
         if calcsh:
             # Integrate shear spectrum to obtain shear variance
-            Ssh = np.trapz(Ptot_sh[iimsh], m[iimsh])
+            Ssh = np.trapezoid(Ptot_sh[iimsh], m[iimsh])
             Int_sh[iwin] = Ssh
             # GM shear variance
             Sshgm, Pshgm = gm_shear_variance(m, iimsh, Nm)
             Int_sh_gm[iwin] = Sshgm
 
         # Integrate strain spectrum to obtain strain variance
-        Sst = np.trapz(Ptot_st[iimst], m[iimst])
+        Sst = np.trapezoid(Ptot_st[iimst], m[iimst])
         Int_st[iwin] = Sst
         # GM strain variance
         Sstgm, Pstgm = gm_strain_variance(m, iimst, Nm)
