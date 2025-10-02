@@ -79,13 +79,13 @@ def psd(
           which the data should be windowed and filtered before computing the
           periodogram. In this case you may also specify:
 
-          * tser_window: an integer that gives the length of each window
-            the series should be broken up into for filtering and
-            computing the periodogram.  Default is length(g).
+          * tser_window: an integer that gives the length of each window the
+          series should be broken up into for filtering and computing the
+          periodogram.  Default is length(g).
 
-          * tser_overlap: an integer equal to the lengh of points
-            overlap between sucessive windows. Default = tser_window/2,
-            which means 50% overlap.
+          * tser_overlap: an integer equal to the lengh of points overlap
+          between sucessive windows. Default = tser_window/2, which means 50%
+          overlap.
     detrend : bool, optional
         Detrend along dim by removing a linear fit using scipy.detrend().
         Defaults to True.
@@ -109,8 +109,8 @@ def psd(
     if detrend:
         g = signal.detrend(g)
 
-    # FFT and welch act on rows by default. If we want to calculate column-wise,
-    # simply transpose the input matrix.
+    # FFT and welch act on rows by default. If we want to calculate
+    # column-wise, simply transpose the input matrix.
     if axis == 0 & len(M0) > 1:
         g = np.transpose(g)
     M = g.shape
@@ -247,17 +247,43 @@ def read_testfile(filename):
     return {vi: data[:, i] for i, vi in enumerate(v)}
 
 
-def read_ctd_testfile():
-    cwd = pathlib.Path.cwd()
-    # p = pathlib.Path(__file__).resolve()
-    ctdfile = cwd.parent / "tests" / "data" / "ctd_test_data.csv"
+def read_ctd_testfile(path=None):
+    """Read CTD profile from test suite.
+
+    Parameters
+    ----------
+    path : pathlib.Path or str, optional
+        Provide path to data file.
+
+    Returns
+    -------
+    dict
+    """
+    if path is None:
+        cwd = pathlib.Path.cwd()
+        ctdfile = cwd.parent / "tests" / "data" / "ctd_test_data.csv"
+    else:
+        ctdfile = path
     ctd = read_testfile(ctdfile)
     return ctd
 
 
-def read_ladcp_testfile():
-    cwd = pathlib.Path.cwd()
-    # p = pathlib.Path(__file__).resolve()
-    ladcpfile = cwd.parent / "tests" / "data" / "ladcp_test_data.csv"
+def read_ladcp_testfile(path=None):
+    """Read LADCP profile from test suite.
+
+    Parameters
+    ----------
+    path : pathlib.Path or str, optional
+        Provide path to data file.
+
+    Returns
+    -------
+    dict
+    """
+    if path is None:
+        cwd = pathlib.Path.cwd()
+        ladcpfile = cwd.parent / "tests" / "data" / "ladcp_test_data.csv"
+    else:
+        ladcpfile = path
     ladcp = read_testfile(ladcpfile)
     return ladcp

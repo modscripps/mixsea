@@ -30,7 +30,8 @@ def wavenumber_vector(w):
 
 def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, window_size):
     """
-    Calculate strain with a smooth :math:`N^2` profile from polynomial fits to windowed data.
+    Calculate strain with a smooth :math:`N^2` profile from polynomial fits to
+    windowed data.
 
     This version outputs polyfit and strain for the whole window as opposed to
     just half the window centered.
@@ -55,7 +56,8 @@ def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, window_size):
     Returns
     -------
     list
-        List with results in a dict for each depth segment. The dict has the following entries:
+        List with results in a dict for each depth segment. The dict has the
+        following entries:
 
         - ``"segz"``: Segment depth vector (`array-like`).
 
@@ -63,7 +65,8 @@ def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, window_size):
 
         - ``"N2"``: Segment buoyancy frequency squared (`array-like`).
 
-        - ``"N2smooth"``: Segment polynomial fit to buoyancy frequency squared (`array-like`).
+        - ``"N2smooth"``: Segment polynomial fit to buoyancy frequency squared
+          (`array-like`).
 
         - ``"N2mean"``: Segment mean buoyancy frequency squared (`float`).
 
@@ -102,8 +105,8 @@ def strain_polynomial_fits(depth, t, SP, lon, lat, depth_bin, window_size):
 def strain_adiabatic_leveling(
     depth, t, SP, lon, lat, bin_width, depth_bin, window_size
 ):
-    """
-    Calculate strain with a smooth :math:`N^2` profile based on the adiabatic leveling method.
+    """Calculate strain with a smooth :math:`N^2` profile based on the
+    adiabatic leveling method.
 
     Parameters
     ----------
@@ -125,7 +128,8 @@ def strain_adiabatic_leveling(
     Returns
     -------
     list
-        List with results in a dict for each depth segment. The dict has the following entries:
+        List with results in a dict for each depth segment. The dict has the
+        following entries:
 
         - ``"segz"``: Segment depth vector (`array-like`).
 
@@ -133,11 +137,12 @@ def strain_adiabatic_leveling(
 
         - ``"N2"``: Segment buoyancy frequency squared (`array-like`).
 
-        - ``"N2smooth"``: Segment polynomial fit to buoyancy frequency squared (`array-like`).
+        - ``"N2smooth"``: Segment polynomial fit to buoyancy frequency squared
+          (`array-like`).
+
         - ``"N2mean"``: Segment mean buoyancy frequency squared (`float`).
 
         - ``"strain"``: Segment strain (`array-like`).
-
     """
     dz = np.absolute(np.median(np.diff(depth)))
     # Prepare output list. It will hold a dictionary with data for each window.
@@ -220,8 +225,8 @@ def find_cutoff_wavenumber(P, m, integration_limit, lambda_min=5):
 
 
 def aspect_ratio_correction_shst(Rw):
-    """
-    Compute kinematic internal wave aspect ratio term based shear/strain ratio shear/strain parameterization.
+    """Compute kinematic internal wave aspect ratio term based shear/strain
+    ratio shear/strain parameterization.
 
     Parameters
     ----------
@@ -236,8 +241,8 @@ def aspect_ratio_correction_shst(Rw):
 
 
 def aspect_ratio_correction_st(Rw):
-    """
-    Compute kinematic internal wave aspect ratio term based shear/strain ratio for strain-only parameterization
+    """Compute kinematic internal wave aspect ratio term based shear/strain
+    ratio for strain-only parameterization
 
     Parameters
     ----------
@@ -252,8 +257,7 @@ def aspect_ratio_correction_st(Rw):
 
 
 def latitude_correction(f, N):
-    r"""
-    Latitudinal correction term
+    r"""Latitudinal correction term
 
     Parameters
     ----------
@@ -300,9 +304,11 @@ def eps_shearstrain(eps0, Nm, N0, Ssh, Sshgm, Rw, f):
     N0 : float
         GM reference stratification
     Ssh : float
-        band-integrated observed shear variance normalized by mean stratification
+        band-integrated observed shear variance normalized by mean
+        stratification
     Sshgm : float
-        band-integrated GM shear variance normalized by GM reference stratification
+        band-integrated GM shear variance normalized by GM reference
+        stratification
     Rw : float
         shear/strain ratio
     f : float
@@ -331,7 +337,8 @@ def eps_strain(eps0, Nm, N0, Sst, Sstgm, Rw, f):
     Sst : float
         band-integrated observed strain normalized by mean stratification
     Sstgm : float
-        band-integrated GM strain variance normalized by GM reference stratification
+        band-integrated GM strain variance normalized by GM reference
+        stratification
     Rw : float
         shear/strain ratio
     f : float
@@ -377,8 +384,7 @@ def diffusivity(eps, N, Gam=0.2):
 
 
 def gm_shear_variance(m, iim, N):
-    r"""
-    GM model shear variance
+    r"""GM model shear variance
 
     Parameters
     ----------
@@ -430,8 +436,7 @@ def gm_shear_variance(m, iim, N):
 
 
 def gm_strain_variance(m, iim, N):
-    r"""
-    GM model strain variance.
+    r"""GM model strain variance.
 
     Parameters
     ----------
@@ -487,7 +492,8 @@ def gm_strain_variance(m, iim, N):
 def nan_shearstrain(
     depth, t, SP, lon, lat, ladcp_u=None, ladcp_v=None, ladcp_depth=None, **kwargs
 ):
-    """Compute krho and epsilon via shear/strain parameterization attempting to deal NaN values in the input data.
+    """Compute krho and epsilon via shear/strain parameterization attempting to
+    deal NaN values in the input data.
 
     See `shearstrain` for details.
     """
@@ -562,8 +568,8 @@ def shearstrain(
     window="hamming",
     return_diagnostics=False,
 ):
-    """
-    Compute krho and epsilon from CTD/LADCP data via the shear/strain parameterization.
+    """Compute krho and epsilon from CTD/LADCP data via the shear/strain
+    parameterization.
 
     Parameters
     ----------
@@ -588,8 +594,8 @@ def shearstrain(
         Wavenumber vector to interpolate spectra onto
     depth_bin : array-like, optional
         Centers of windows over which spectra are computed. Defaults to
-        np.arange(75, max(depth), 150). Note that windows are half-overlapping so
-        the 150 spacing above means each window is 300 m tall.
+        np.arange(75, max(depth), 150). Note that windows are half-overlapping
+        so the 150 spacing above means each window is 300 m tall.
     window_size : float
         Size of depth window [m].
     m_include_sh : array-like, optional

@@ -16,8 +16,8 @@ def nsqfcn(s, t, p, p0, dp, lon, lat):
                   (5) returns NaNs if the filtered pressure is not
                       monotonic.
 
-    If you want to have the buoyancy frequency in [cyc/s] then
-    calculate sqrt(n2)./(2*pi). For the period in [s] do sqrt(n2).*2.*pi
+    If you want to have the buoyancy frequency in [cyc/s] then calculate
+    sqrt(n2)./(2*pi). For the period in [s] do sqrt(n2).*2.*pi
 
     Adapted from Gregg and Alford.
 
@@ -180,8 +180,8 @@ def adiabatic_leveling(
     N2_ref : 1-D ndarray
         Reference buoyancy frequency [s-2]
     pcoefs : 2-D ndarray
-        Fitting coefficients, returned only when the flag return_diagnostics is set
-        True.
+        Fitting coefficients, returned only when the flag return_diagnostics is
+        set True.
 
     Notes
     -----
