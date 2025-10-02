@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Run CI on all desired Python versions
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        # Run CI on the oldest supported and a couple newer Python versions
+        python-version: ["3.9", "3.12", "3.13"]
 
     steps:
     - name: Checkout repository
