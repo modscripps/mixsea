@@ -30,9 +30,9 @@ Ocean mixing parameterizations in python.
 Features
 --------
 
-* Thorpe scale based mixing estimates
+* Thorpe-scale-based mixing estimates
 
-* Shear/strain based mixing estimates
+* Shear/strain-based mixing estimates
 
 Credits
 -------

@@ -17,7 +17,7 @@ v0.2.1 (unreleased)
 Documentation
 ~~~~~~~~~~~~~
 - Produce svg images in addition to png. Using svg in the html build of the
-  docs fixes funky aspect ratios in the documentation.
+  docs fixes funky aspect ratios in the documentation. (:pull:`126`).
   By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 Internal Changes
