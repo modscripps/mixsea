@@ -44,6 +44,7 @@ Stratification
     :toctree: generated/
 
     nsq.adiabatic_leveling
+    nsq.nsqfcn
 
 Other functions
 ===============
@@ -52,5 +53,6 @@ Other functions
     :toctree: generated/
 
     helpers.psd
+    helpers.calc_shear
     helpers.read_ctd_testfile
-    helpers.read_ladcp_testfile 
+    helpers.read_ladcp_testfile
