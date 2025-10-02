@@ -9,9 +9,10 @@ def nan_eps_overturn(
     **kwargs,
 ):
     """
-    Calculate turbulent dissipation based on the Thorpe scale method attempting to deal NaN values in the input data.
-    It does this by removing all NaN values in the input profiles, then computes thorpe scales, then re-inserts NaNs
-    at the end.
+    Calculate turbulent dissipation based on the Thorpe scale method attempting
+    to deal NaN values in the input data.  It does this by removing all NaN
+    values in the input profiles, then computes thorpe scales, then re-inserts
+    NaNs at the end.
 
     See `eps_overturn` for more options.
     """
@@ -80,15 +81,17 @@ def eps_overturn(
     return_diagnostics=False,
 ):
     """
-    Calculate turbulent dissipation based on the Thorpe scale method. This function cannot handle
-    NaNs in the input data, but there is another called `nan_eps_overturn' that attempts to.
+    Calculate turbulent dissipation based on the Thorpe scale method. This
+    function cannot handle NaNs in the input data, but there is another called
+    `nan_eps_overturn' that attempts to.
 
     Parameters
     ----------
     depth : array-like
             Depth [m]
     t : array-like
-            Temperature [°C]. If using gsw equation of state, it should have ITS90 °C units.
+            Temperature [°C]. If using gsw equation of state, it should have
+            ITS90 °C units.
     SP : float or array-like
             Practical salinity [g/kg]. Can be a single constant value.
     lon : float, optional
@@ -96,44 +99,53 @@ def eps_overturn(
     lat : float, optional
             Latitude of observation (improves accuracy of TEOS-10 EOS)
     dnoise : float, optional
-            Noise level of density [kg/m^3] or temperature [°C], depending on overturns_from_t. Default is 5e-4.
+            Noise level of density [kg/m^3] or temperature [°C], depending on
+            overturns_from_t. Default is 5e-4.
     alpha : float, optional
-            Ratio of Ozmidov scale to Thorpe scale, alpha = Lo/Lt. Default is 0.95. Care must be taken to choose
-            a value appropriate for the setting, e.g. Dillon 1982 [1]_, Ferron et al. 1998 [2]_.
-            Convert to Thorpe 1977 [3]_ conventions with C0 = alpha**2.
-            Not to be confused with alpha in Equation 4 from Thorpe 1977, which is the inverse of our alpha.
+            Ratio of Ozmidov scale to Thorpe scale, alpha = Lo/Lt. Default is
+            0.95. Care must be taken to choose a value appropriate for the
+            setting, e.g. Dillon 1982 [1]_, Ferron et al. 1998 [2]_.  Convert
+            to Thorpe 1977 [3]_ conventions with C0 = alpha**2.  Not to be
+            confused with alpha in Equation 4 from Thorpe 1977, which is the
+            inverse of our alpha.
     Roc : float, optional
-            Critical value of the overturn ratio Ro. An overturn will be considered
-            noise if Ro < Roc.
+            Critical value of the overturn ratio Ro. An overturn will be
+            considered noise if Ro < Roc.
     background_eps : float, optional
             Background epsilon where no overturn detected. Defaults to NaN.
     use_ip : bool, optional
-            Sets whether to use the intermediate profile method. Default is False. If True,
-            the dnoise parameter is passed as the `accuracy' argument of the intermediate
-            profile method.
+            Sets whether to use the intermediate profile method. Default is
+            False. If True, the dnoise parameter is passed as the `accuracy'
+            argument of the intermediate profile method.
     N2_method : string, optional
-            Method for calculation of buoyancy frequency. Default is 'teosp1'. Options are 'bulk',
-            'endpt', 'teos' and 'teosp1'.
+            Method for calculation of buoyancy frequency. Default is 'teos'.
+            Options are 'bulk', 'endpt', 'teos' and 'teosp1'.
     overturns_from_t : bool, optional
-            If true, overturning patches will be diagnosed from the temperature or conservative temperature,
-            depending on the equation of state. Default is False.
+            If true, overturning patches will be diagnosed from the temperature
+            or conservative temperature, depending on the equation of state.
+            Default is False.
     pbinwidth : float, optional
-            Potential density is not valid far from its reference pressure. For deep profiles, we loop over pressure bins.
-            The pbinwidth parameter [dbar] sets the width of bins used for looping. Default is 1000, e.g. a 2000 dbar profile will use
-            two bins and two different reference densities.
+            Potential density is not valid far from its reference pressure. For
+            deep profiles, we loop over pressure bins.  The pbinwidth parameter
+            [dbar] sets the width of bins used for looping. Default is 1000,
+            e.g. a 2000 dbar profile will use two bins and two different
+            reference densities.
     EOS : string, optional
-            Equation of state, which can either be 'gsw' denoting TOES-10 or 'linear'. The default is 'gsw'.
-            If you choose 'linear', the N2_method must be either 'bulk' or 'endpt'.
-
-            For the linear equation of state, density is calculated as rho0*(1 - a*(t-t0) + b*(SP-SP0))
+            Equation of state, which can either be 'gsw' denoting TOES-10 or
+            'linear'. The default is 'gsw'.  If you choose 'linear', the
+            N2_method must be either 'bulk' or 'endpt'.
+            For the linear equation of state, density is calculated as rho0*(1
+            - a*(t-t0) + b*(SP-SP0))
             (see parameter definitions below).
     linear_EOS_params : dict of floats, optional
-            Dict of parameters rho0, a, b, SP0 and t0, where rho0 is a constant density [kg/m^3], a is the thermal expansion
-            coefficient [1/°C] and b is the saline expansion coefficient [kg/g] and SP0 and t0 are constants for salinity [g/kg] and temperature [°C].
-            The defaults are dict(rho0=1025, a=2e-4, b=7e-4, SP0=35, t0=15).
+            Dict of parameters rho0, a, b, SP0 and t0, where rho0 is a constant
+            density [kg/m^3], a is the thermal expansion coefficient [1/°C] and
+            b is the saline expansion coefficient [kg/g] and SP0 and t0 are
+            constants for salinity [g/kg] and temperature [°C].  The defaults
+            are dict(rho0=1025, a=2e-4, b=7e-4, SP0=35, t0=15).
     return_diagnostics : bool, optional
-            Default is False. If True, this function will return a dictionary containing
-            variables such as the Thorpe scale Lt, etc.
+            Default is False. If True, this function will return a dictionary
+            containing variables such as the Thorpe scale Lt, etc.
 
     Returns
     -------
@@ -142,7 +154,8 @@ def eps_overturn(
     N2 : ndarray
             Background stratification of each overturn detected [s^-2]
     diag : dict, optional
-            Dictionary of diagnositc variables, set return with the `return_diagnostics' argument.
+            Dictionary of diagnositc variables, set return with the
+            `return_diagnostics' argument.
 
     References
     ----------
@@ -186,7 +199,8 @@ def eps_overturn(
         SA = gsw.SA_from_SP(SP, p, lon, lat)
         CT = gsw.CT_from_t(SA, t, p)
 
-    # Estimate 'width' of data... I think our method only works for evenly spaced data so this might be redundant.
+    # Estimate 'width' of data... I think our method only works for evenly
+    # spaced data so this might be redundant.
     dz = 0.5 * (depth[2:] - depth[:-2])  # 'width' of each data point
     dz = np.hstack((dz[0], dz, dz[-1]))  # assume width of first and last data point
 
@@ -214,9 +228,9 @@ def eps_overturn(
     for var in flagvar:
         diag[var] = np.full_like(depth, False, dtype=bool)
 
-    # Potential density is only meaningful near the reference pressure. For a deep profile
-    # we may need to select several reference pressures. To do so, we find the pressure
-    # bins that best contain the data
+    # Potential density is only meaningful near the reference pressure. For a
+    # deep profile we may need to select several reference pressures. To do so,
+    # we find the pressure bins that best contain the data
     if EOS == "gsw":
         pbinmin = np.floor(p.min() / pbinwidth) * pbinwidth
         pbinmax = np.ceil(p.max() / pbinwidth) * pbinwidth
@@ -237,8 +251,9 @@ def eps_overturn(
             dens = pot_rho_linear(SP, t, **linear_EOS_params)
 
         if overturns_from_t:
-            # Temperature normally decreases towards the bottom which would mean the
-            # find_overturns algorithm thinks the whole water column is unstable! Minus fixes that.
+            # Temperature normally decreases towards the bottom which would
+            # mean the find_overturns algorithm thinks the whole water column
+            # is unstable! Minus fixes that.
             if EOS == "gsw":
                 q = -CT
             elif EOS == "linear":
@@ -265,7 +280,8 @@ def eps_overturn(
         if not np.any(idx_patches):
             continue
 
-        # Thorpe displacements (by definition relative to initial locations, so unsorted)
+        # Thorpe displacements (by definition relative to initial locations, so
+        # unsorted)
         unsidx = np.argsort(sidx)
         thorpe_disp = (depth[sidx] - depth)[unsidx]
 
@@ -415,9 +431,10 @@ def thorpe_scale(depth, q, dnoise):
     depth : array-like
             Depth [m] (negative if below sea surface)
     q : array-like
-            Quantity from which Thorpe scales will be computed, e.g. density or temperature. If using
-            temperature, consider multiplying by -1 to get around the fact that temperature generally
-            decreases with depth.
+            Quantity from which Thorpe scales will be computed, e.g. density or
+            temperature. If using temperature, consider multiplying by -1 to
+            get around the fact that temperature generally decreases with
+            depth.
     dnoise : float, optional
             Uncertainty or noise in q.
 
@@ -430,13 +447,15 @@ def thorpe_scale(depth, q, dnoise):
     q_sorted : ndarray
             q sorted to be monotonically increasing
     noise_flag : ndarray
-            True if difference in q from top to bottom patch is less than dnoise
+            True if difference in q from top to bottom patch is less than
+            dnoise
     ends_flag : ndarray
             True if a patch includes and end point
     Ro : ndarray
             Overturn ratio of Gargett & Garner.
     idx_patches : ndarray
-            Indices of overturning patches, e.g. idx_patches[:, 0] are start indices and idx_patches[:, 1] are end indices.
+            Indices of overturning patches, e.g. idx_patches[:, 0] are start
+            indices and idx_patches[:, 1] are end indices.
     idx_sorted : ndarray
             Indices required to sort q so as to generate q_sorted.
     """
@@ -504,14 +523,14 @@ def thorpe_scale(depth, q, dnoise):
 
 
 def find_overturns(q):
-    """Find the indices of unstable patches by cumulatively summing the difference between
-    sorted and unsorted indices of q.
+    """Find the indices of unstable patches by cumulatively summing the
+    difference between sorted and unsorted indices of q.
 
     Parameters
     ----------
     q : array_like 1D
-            Profile of some quantity from which overturns can be detected
-            e.g. temperature or density.
+            Profile of some quantity from which overturns can be detected e.g.
+            temperature or density.
 
     Returns
     -------
@@ -529,15 +548,16 @@ def find_overturns(q):
 
 
 def intermediate_profile_topdown(q, acc, hinge):
-    """Generate an intermediate profile starting at q[0] moving along the array.
+    """Generate an intermediate profile starting at q[0] moving along the
+    array.
 
     See Ferron et. al. 1998 and Gargett and Garner 2008.
 
     Parameters
     ----------
     q : array_like 1D
-            Profile of some quantity that the intermediate profile method can be
-            applied to e.g. temperature or density.
+            Profile of some quantity that the intermediate profile method can
+            be applied to e.g. temperature or density.
     acc : float, optional
             Accuracy parameter. The intermediate profile change in steps of acc.
     hinge : float, optional
@@ -572,17 +592,18 @@ def intermediate_profile(q, acc=5e-4, hinge=1000, kind="down"):
     Parameters
     ----------
     q : array_like 1D
-            Profile of some quantity that the intermediate profile method can be
-            applied to e.g. temperature or density.
+            Profile of some quantity that the intermediate profile method can
+            be applied to e.g. temperature or density.
     acc : float, optional
-            Accuracy parameter. The intermediate profile change in steps of acc.
+            Accuracy parameter. The intermediate profile change in steps of
+            acc.
     hinge : float, optional
-            Intermediate profile values are equal to the hinge plus an integer multiple
-            of acc. It should be kept constant across profiles.
+            Intermediate profile values are equal to the hinge plus an integer
+            multiple of acc. It should be kept constant across profiles.
     kind : string, optional
-            Either 'up', 'down' or 'ave'. Default is ave. This argument determines
-            whether the method is applied top down (q[0] to q[end]), bottom up
-            (q[end] to [q[0]]) or the average of up and down.
+            Either 'up', 'down' or 'ave'. Default is ave. This argument
+            determines whether the method is applied top down (q[0] to q[end]),
+            bottom up (q[end] to [q[0]]) or the average of up and down.
 
     Returns
     -------
@@ -621,8 +642,9 @@ def contiguous_regions(condition):
     Returns
     -------
     idx : ndarray
-            Array of indices demarking the start and end of contiguous True regions in condition.
-            Shape is (N, 2) where N is the number of regions.
+            Array of indices demarking the start and end of contiguous True
+            regions in condition.  Shape is (N, 2) where N is the number of
+            regions.
 
     Notes
     -----
