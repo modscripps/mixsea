@@ -14,11 +14,17 @@ v0.2.1 (unreleased)
 .. Bug fixes
 .. ~~~~~~~~~
 
-.. Documentation
-.. ~~~~~~~~~~~~~
+Documentation
+~~~~~~~~~~~~~
+- Produce svg images in addition to png. Using svg in the html build of the
+  docs fixes funky aspect ratios in the documentation. (:pull:`126`).
+  By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
-.. Internal Changes
-.. ~~~~~~~~~~~~~~~~
+Internal Changes
+~~~~~~~~~~~~~~~~
+- Clean up docstrings and shorten their line lengths (and those of comments)
+  (:pull:`125`).
+  By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 
 v0.2.0 (2025-09-30)
@@ -78,10 +84,10 @@ Breaking changes
 New Features
 ~~~~~~~~~~~~
 - Linear equation of state option added to the overturn module (:pull:`97`) as well as a few other tweaks to the eps_overturn function, including:
-
     - making latitude and longitude arguments optional
     - providing an argument for the pressure bin width used in the potential density calculation
     - removing unnecessary and/or meaningless diagnostics
+
   By `Jesse Cusack <https://github.com/jessecusack>`_.
 
 Bug fixes

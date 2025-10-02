@@ -60,6 +60,10 @@ napoleon_use_param = False
 napoleon_use_ivar = True
 
 nbsphinx_kernel_name = "python3"
+nbsphinx_execute_arguments = [
+    "--InlineBackend.figure_formats={'svg'}",
+    "--InlineBackend.rc={'figure.dpi': 96}",
+]
 
 extlinks = {
     "issue": ("https://github.com/modscripps/mixsea/issues/%s", "GH%s"),
@@ -84,8 +88,8 @@ main_doc = "index"
 
 # General information about the project.
 project = "mixsea"
-copyright = "2021, mixsea Developers"
-author = "mixsea Developers"
+copyright = "2021-2025, mixsea developers"
+author = "mixsea developers"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
@@ -170,7 +174,7 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass
 # [howto, manual, or own class]).
 latex_documents = [
-    (main_doc, "mixsea.tex", "mixsea Documentation", "Gunnar Voet", "manual"),
+    (main_doc, "mixsea.tex", "mixsea documentation", "mixsea developers", "manual"),
 ]
 
 
@@ -178,7 +182,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(main_doc, "mixsea", "mixsea Documentation", [author], 1)]
+man_pages = [(main_doc, "mixsea", "mixsea documentation", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------
@@ -190,10 +194,10 @@ texinfo_documents = [
     (
         main_doc,
         "mixsea",
-        "mixsea Documentation",
+        "mixsea documentation",
         author,
         "mixsea",
-        "One line description of project.",
+        "ocean mixing parameterizations in python",
         "Miscellaneous",
     ),
 ]
