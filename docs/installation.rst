@@ -46,6 +46,11 @@ or in developer mode (to immediately apply changes you make to the source code):
 
     $ pip install -e .
 
+If you use `uv <https://docs.astral.sh/uv/>`__ to manage packages then install in developer mode as:
+
+.. code-block:: console
+
+    $ uv add --editable <path/to/mixsea/source>
 
 
 .. _Github repo: https://github.com/modscripps/mixsea
