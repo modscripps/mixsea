@@ -60,6 +60,10 @@ napoleon_use_param = False
 napoleon_use_ivar = True
 
 nbsphinx_kernel_name = "python3"
+nbsphinx_execute_arguments = [
+    "--InlineBackend.figure_formats={'svg'}",
+    "--InlineBackend.rc={'figure.dpi': 96}",
+]
 
 extlinks = {
     "issue": ("https://github.com/modscripps/mixsea/issues/%s", "GH%s"),
