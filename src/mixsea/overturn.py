@@ -118,7 +118,7 @@ def eps_overturn(
             False. If True, the dnoise parameter is passed as the `accuracy'
             argument of the intermediate profile method.
     N2_method : string, optional
-            Method for calculation of buoyancy frequency. Default is 'teosp1'.
+            Method for calculation of buoyancy frequency. Default is 'teos'.
             Options are 'bulk', 'endpt', 'teos' and 'teosp1'.
     overturns_from_t : bool, optional
             If true, overturning patches will be diagnosed from the temperature
