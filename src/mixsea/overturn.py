@@ -452,7 +452,7 @@ def thorpe_scale(depth, q, dnoise):
     ends_flag : ndarray
             True if a patch includes and end point
     Ro : ndarray
-            Overturn ratio of Gargett & Garner.
+            Overturn ratio of Gargett & Garner (2008).
     idx_patches : ndarray
             Indices of overturning patches, e.g. idx_patches[:, 0] are start
             indices and idx_patches[:, 1] are end indices.
