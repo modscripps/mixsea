@@ -19,6 +19,8 @@ Documentation
 - Produce svg images in addition to png. Using svg in the html build of the
   docs fixes funky aspect ratios in the documentation. (:pull:`126`).
   By `Gunnar Voet <https://github.com/gunnarvoet>`_.
+- Add details on Gargett & Garner (2008) overturn ratio. (:pull:`127`).
+  By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 Internal Changes
 ~~~~~~~~~~~~~~~~
