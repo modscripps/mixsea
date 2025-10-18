@@ -210,6 +210,7 @@ def eps_overturn(
         "eps",
         "N2",
         "Lt",
+        "Lp",
         "thorpe_disp",
         "dens",
         "dens_sorted",
@@ -274,6 +275,7 @@ def eps_overturn(
             Ro,
             idx_patches,
             sidx,
+            Lp,
         ) = thorpe_scale(depth, q, dnoise)
 
         # If there are no overturns, move on to the next pressure bin.
@@ -361,6 +363,7 @@ def eps_overturn(
         # Fill other diagnostics.
         diag["N2"][inbin] = N2[inbin]
         diag["Lt"][inbin] = Lt[inbin]
+        diag["Lp"][inbin] = Lp[inbin]
         diag["Ro"][inbin] = Ro[inbin]
         diag["thorpe_disp"][inbin] = thorpe_disp[inbin]
         diag["dens"][inbin] = dens[inbin]
@@ -429,7 +432,7 @@ def thorpe_scale(depth, q, dnoise):
     Parameters
     ----------
     depth : array-like
-            Depth [m] (negative if below sea surface)
+            Depth [m] (negative if below sea surface).
     q : array-like
             Quantity from which Thorpe scales will be computed, e.g. density or
             temperature. If using temperature, consider multiplying by -1 to
@@ -441,16 +444,16 @@ def thorpe_scale(depth, q, dnoise):
     Returns
     -------
     Lt : ndarray
-            Thorpe scale [m]
+            Thorpe scale [m].
     thorpe_disp : ndarray
-            Thorpe displacement [m]
+            Thorpe displacement [m].
     q_sorted : ndarray
-            q sorted to be monotonically increasing
+            q sorted to be monotonically increasing.
     noise_flag : ndarray
             True if difference in q from top to bottom patch is less than
-            dnoise
+            dnoise.
     ends_flag : ndarray
-            True if a patch includes and end point
+            True if a patch includes and end point.
     Ro : ndarray
             Overturn ratio of Gargett & Garner (2008).
     idx_patches : ndarray
@@ -458,6 +461,8 @@ def thorpe_scale(depth, q, dnoise):
             indices and idx_patches[:, 1] are end indices.
     idx_sorted : ndarray
             Indices required to sort q so as to generate q_sorted.
+    Lp : ndarray
+            Patch size (vertical extent of overturn) [m].
     """
 
     depth = np.asarray(depth)
@@ -482,6 +487,7 @@ def thorpe_scale(depth, q, dnoise):
 
     # Initialise arrays.
     Lt = np.full_like(depth, np.nan)
+    Lp = np.full_like(depth, np.nan)
     Ro = np.full_like(depth, np.nan)
     noise_flag = np.full_like(depth, False, dtype=bool)
     ends_flag = np.full_like(depth, False, dtype=bool)
@@ -510,16 +516,29 @@ def thorpe_scale(depth, q, dnoise):
         if dq < dnoise:
             noise_flag[pidx] = True
 
-        # Overturn ratio of Gargett & Garner
-        Tdo = thorpe_disp[pidx]
+        # Patch size (vertical extent of overturn)
         dzo = dz[pidx]
         L_tot = np.sum(dzo)
+        Lp[pidx] = L_tot
+
+        # Overturn ratio of Gargett & Garner
+        Tdo = thorpe_disp[pidx]
         L_neg = np.sum(dzo[Tdo < 0])
         L_pos = np.sum(dzo[Tdo > 0])
         Roo = np.minimum(L_neg / L_tot, L_pos / L_tot)
         Ro[pidx] = Roo
 
-    return Lt, thorpe_disp, q_sorted, noise_flag, ends_flag, Ro, idx_patches, idx_sorted
+    return (
+        Lt,
+        thorpe_disp,
+        q_sorted,
+        noise_flag,
+        ends_flag,
+        Ro,
+        idx_patches,
+        idx_sorted,
+        Lp,
+    )
 
 
 def find_overturns(q):
