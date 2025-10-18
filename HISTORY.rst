@@ -8,8 +8,10 @@ v0.2.1 (unreleased)
 .. Breaking changes
 .. ~~~~~~~~~~~~~~~~
 
-.. New Features
-.. ~~~~~~~~~~~~
+New Features
+~~~~~~~~~~~~
+- Add patch size `Lp` to overturn diagnostics. (:pull:`128`)
+  By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 .. Bug fixes
 .. ~~~~~~~~~
