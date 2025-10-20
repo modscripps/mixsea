@@ -161,6 +161,7 @@ def test_thorpe_scale():
     rho_s[middle] = rho_0 * (1.0 - delta * np.sin(np.pi * (z[middle] - z0) / (2.0 * h)))
     rho_s[bottom] = rho[bottom]
 
+    Lp_defined = 2.0 * h
     Lt_analytical = 4.0 * h / (3.0 * np.sqrt(3.0))
 
     (
@@ -172,12 +173,14 @@ def test_thorpe_scale():
         Ro,
         patches,
         idx_sorted,
+        Lp,
     ) = overturn.thorpe_scale(-z, rho, 0)
 
     inoverturn = thorpe_disp != 0.0
 
     assert np.isclose(q_sorted, rho_s).all()
     assert np.isclose(np.unique(Lt[inoverturn])[0], Lt_analytical)
+    assert np.isclose(np.unique(Lp[inoverturn])[0], Lp_defined)
     assert np.isclose(np.unique(Ro[inoverturn])[0], 0.5, atol=0.02)
 
 
