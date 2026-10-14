@@ -511,9 +511,12 @@ def thorpe_scale(depth, q, dnoise):
         if i1 == ndata - 1:
             ends_flag[pidx] = True
 
-        # Flag small difference.
+        # Flag small difference. On an intermediate profile q takes the
+        # values hinge + n * dnoise, so an overturn spanning one step has dq
+        # equal to dnoise up to rounding. The relative tolerance keeps such
+        # an overturn unflagged whatever the value of dnoise.
         dq = q_sorted[i1] - q_sorted[i0]
-        if dq < dnoise:
+        if dq < dnoise * (1 - 1e-6):
             noise_flag[pidx] = True
 
         # Patch size (vertical extent of overturn)

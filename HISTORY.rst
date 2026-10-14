@@ -13,8 +13,14 @@ New Features
 - Add patch size `Lp` to overturn diagnostics. (:pull:`128`)
   By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
-.. Bug fixes
-.. ~~~~~~~~~
+Bug fixes
+~~~~~~~~~
+- The noise flag of `thorpe_scale` compared the density difference across an
+  overturn with `dnoise` without a tolerance. With the intermediate profile an
+  overturn spanning one step has a difference equal to `dnoise` up to
+  rounding, so whether it was flagged depended on the floating-point value of
+  `dnoise`. One-step overturns are now always kept.
+  By `Gunnar Voet <https://github.com/gunnarvoet>`_.
 
 Documentation
 ~~~~~~~~~~~~~
