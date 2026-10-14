@@ -228,3 +228,26 @@ def test_intermediate_profile():
     kind = "av"
     qi = overturn.intermediate_profile(q, acc, hinge, kind)
     assert (qi == np.array([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 2.5, 3.0, 3.0])).all()
+
+
+def test_thorpe_scale_one_step_overturn_not_flagged():
+    """An overturn spanning one step of the intermediate profile has a
+    density difference equal to dnoise up to rounding and must not be
+    flagged as noise, whatever the value of dnoise."""
+    flagged = []
+    for acc in np.linspace(1e-4, 2e-4, 101):
+        n = 100
+        q = 1041.123 + acc * (np.arange(n) + 0.5)
+        q[51] = q[50] - 1.6 * acc
+        depth = np.arange(n, dtype=float)
+        qi = overturn.intermediate_profile(q, acc=acc, hinge=1000, kind="down")
+        _, _, q_sorted, noise_flag, _, _, idx_patches, _, _ = overturn.thorpe_scale(
+            depth, qi, acc
+        )
+        for i0, i1 in idx_patches:
+            if np.isclose((q_sorted[i1] - q_sorted[i0]) / acc, 1.0):
+                flagged.append(bool(noise_flag[i0]))
+    assert len(flagged) >= 30
+    assert not any(flagged), (
+        f"{sum(flagged)} of {len(flagged)} one-step overturns flagged"
+    )
